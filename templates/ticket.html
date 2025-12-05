@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket #{{ ticket_id }}</title>
+    <style>
+        body { font-family: monospace; font-size: 12px; width: 80mm; margin: 0; padding: 5px; color: black; }
+        .header { text-align: center; border-bottom: 1px dashed black; padding-bottom: 10px; margin-bottom: 10px; }
+        h2, h3 { margin: 5px 0; }
+        
+        .worker-info { border: 1px solid black; padding: 5px; margin-bottom: 10px; border-radius: 4px; }
+        .worker-row { display: flex; justify-content: space-between; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+        th { text-align: left; border-bottom: 1px solid black; font-size: 11px; }
+        td { padding: 4px 0; font-size: 11px; }
+        
+        .qr-section { text-align: center; margin-top: 20px; border-top: 1px dashed black; padding-top: 10px; }
+        .qr-code { width: 100px; height: 100px; margin-bottom: 5px; }
+        .footer { text-align: center; font-size: 9px; margin-top: 20px; }
+    </style>
+</head>
+<body onload="window.print()">
+
+    <div class="header">
+        <h2>{{ config['empresa_nombre'] }}</h2>
+        <small>{{ config['empresa_direccion'] }}</small>
+        <h3>VALE DE SALIDA</h3>
+        <b>#{{ ticket_id }}</b>
+    </div>
+
+    <div class="worker-info">
+        <div class="worker-row">
+            <span><b>RUT:</b> {{ worker['rut'] }}</span>
+            <span><b>Faena:</b> {{ worker['faena'] }}</span>
+        </div>
+        <div><b>Nombre:</b> {{ worker['nombre'] }}</div>
+        <div><b>Sección:</b> {{ worker['seccion'] }}</div>
+    </div>
+    
+    <div><b>Fecha:</b> {{ fecha }}</div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>CANT</th>
+                <th>DESCRIPCIÓN</th>
+                <th>TIPO</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td style="text-align:center;">{{ item.cantidad }}</td>
+                <td>{{ item.nombre }}</td>
+                <td>{{ item.tipo_item[:1] }}</td> </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="qr-section">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=TICKET:{{ ticket_id }}" class="qr-code">
+        <div>{{ ticket_id }}</div>
+    </div>
+
+    <div class="footer">
+        <br>
+        _______________________<br>
+        FIRMA {{ worker['nombre'] }}
+        <br><br>
+        {{ config['ticket_footer'] }}
+    </div>
+
+</body>
+</html>

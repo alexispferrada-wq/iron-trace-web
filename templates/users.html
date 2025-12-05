@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Usuarios - Iron Trace</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f6f9; padding: 20px; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        
+        .form-box { background: #e8f6f3; padding: 20px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #d1f2eb; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        
+        button { background: #27ae60; color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; }
+        button:hover { background: #219150; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #34495e; color: white; }
+        
+        .badge { padding: 3px 8px; border-radius: 4px; font-size: 0.8em; background: #ddd; color: #555; }
+        .role-admin { background: #8e44ad; color: white; }
+        .role-super { background: #d35400; color: white; }
+        .role-oper { background: #2980b9; color: white; }
+
+        .back-link { display: inline-block; margin-bottom: 20px; text-decoration: none; color: #555; }
+        .flash { background: #d4edda; color: #155724; padding: 10px; margin-bottom: 20px; border-radius: 4px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/dashboard" class="back-link">⬅ Volver al Dashboard</a>
+        <h1>👥 Gestión de Usuarios del Sistema</h1>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}<div class="flash">{{ messages[0] }}</div>{% endif %}
+        {% endwith %}
+
+        <div class="form-box">
+            <h3 style="margin-top:0;">Nuevo / Editar Usuario</h3>
+            <form action="/usuarios/guardar" method="POST">
+                <div class="form-group">
+                    <label>Nombre de Usuario (Login)</label>
+                    <input type="text" name="username" placeholder="Ej: oper_turno1" required>
+                </div>
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <input type="password" name="password" placeholder="Dejar en blanco para no cambiar">
+                </div>
+                <div class="form-group">
+                    <label>Rol / Permisos</label>
+                    <select name="rol">
+                        <option value="operador">Operador (Solo Escanear)</option>
+                        {% if rol_actual == 'admin' %}
+                            <option value="supervisor">Supervisor (Reportes y Auditoría)</option>
+                            <option value="admin">Administrador Total</option>
+                        {% endif %}
+                    </select>
+                </div>
+                <button type="submit">GUARDAR USUARIO</button>
+            </form>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Rol</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in usuarios %}
+                <tr>
+                    <td><b>{{ u['username'] }}</b></td>
+                    <td>
+                        <span class="badge role-{{ u['rol'][:5] }}">{{ u['rol']|upper }}</span>
+                    </td>
+                    <td>Activo</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

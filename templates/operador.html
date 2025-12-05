@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Terminal Operador - Iron Trace</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #111; color: #eee; margin: 0; display: flex; height: 100vh; }
+        
+        /* IZQUIERDA: SALIDA */
+        .col-salida { width: 55%; padding: 20px; border-right: 2px solid #333; display: flex; flex-direction: column; background: #1a1a1a; }
+        /* DERECHA: DEVOLUCION */
+        .col-devolucion { width: 45%; padding: 20px; background: #000; display: flex; flex-direction: column; }
+
+        h2 { margin-top: 0; border-bottom: 2px solid #444; padding-bottom: 10px; color: #aaa; }
+        
+        input { padding: 12px; font-size: 1.1em; background: #222; color: white; border: 1px solid #555; text-align: center; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
+        input:focus { outline: 2px solid #3498db; }
+        
+        .form-row { display: flex; gap: 10px; }
+        .cart-container { flex: 1; overflow-y: auto; border: 1px solid #333; margin: 10px 0; background: #111; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        th { text-align: left; background: #222; padding: 8px; position: sticky; top: 0; }
+        td { padding: 8px; border-bottom: 1px solid #333; }
+        
+        button { cursor: pointer; border: none; padding: 10px; font-weight: bold; width: 100%; font-size: 1em; border-radius: 4px; }
+        .btn-add { background: #3498db; color: white; width: auto; flex: 1; }
+        .btn-finish { background: #27ae60; color: white; padding: 20px; font-size: 1.3em; margin-top: 10px; }
+        
+        /* ESTILOS DEVOLUCIÓN */
+        .search-return-box { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn-search-ret { background: #e67e22; color: white; width: auto; flex: 1; }
+        
+        .pending-list { flex: 1; overflow-y: auto; border: 1px solid #333; }
+        .pending-item { padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+        .pending-item:hover { background: #111; }
+        .btn-return-one { background: #e67e22; color: white; width: auto; padding: 5px 15px; font-size: 0.9em; }
+
+        .suggestions { background: #333; position: absolute; width: 40%; max-height: 200px; overflow-y: auto; display: none; border: 1px solid #555; z-index: 100; }
+        .sugg-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #444; }
+        .sugg-item:hover { background: #444; }
+        
+        .badge { padding: 3px 8px; border-radius: 4px; font-size: 0.8em; }
+        .badge-tool { background: #3498db; color: white; }
+        .badge-insumo { background: #f1c40f; color: black; }
+        
+        .flash { background: #2ecc71; color: black; padding: 10px; margin-bottom: 10px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div class="col-salida">
+        <h2 style="color:#3498db;">📤 SALIDA / PRÉSTAMO</h2>
+        <label>TRABAJADOR</label>
+        <input type="text" id="worker_id_out" placeholder="Escanear RUT" autofocus>
+
+        <label>ITEM A AGREGAR</label>
+        <div class="form-row">
+            <div style="flex: 3;">
+                <input type="text" id="tool_search" placeholder="Escanear o Buscar..." onkeyup="buscar(this.value)">
+                <div id="sugg" class="suggestions"></div>
+            </div>
+            <div style="flex: 1;">
+                <input type="number" id="tool_qty" value="1" min="1">
+            </div>
+            <button class="btn-add" onclick="agregar()">+</button>
+        </div>
+
+        <div class="cart-container">
+            <table>
+                <thead><tr><th>Descripción</th><th>Tipo</th><th>Cant.</th><th>X</th></tr></thead>
+                <tbody id="cart_body"></tbody>
+            </table>
+        </div>
+        <button class="btn-finish" onclick="finalizar()">CONFIRMAR SALIDA</button>
+    </div>
+
+    <div class="col-devolucion">
+        <h2 style="color:#e67e22;">📥 DEVOLUCIÓN</h2>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}<div class="flash">{{ messages[0] }}</div>{% endif %}
+        {% endwith %}
+
+        <label>ESCANEAR (RUT Trabajador o QR Ticket)</label>
+        <div class="search-return-box">
+            <input type="text" id="scan_input" placeholder="Disparar aquí..." onchange="buscarPendientes()">
+            <button class="btn-search-ret" onclick="buscarPendientes()">BUSCAR</button>
+        </div>
+
+        <div class="pending-list" id="pending_container">
+            <p style="text-align:center; color:#666; padding:20px;">
+                Escanea el Ticket o el RUT del trabajador para ver qué debe devolver.
+            </p>
+        </div>
+        
+        <div style="margin-top:auto; padding-top:10px;">
+            <p style="font-size:0.8em; color:#666; text-align:center;">
+                Devolución directa por herramienta:
+            </p>
+            <form action="/procesar_devolucion" method="POST" style="display:flex; gap:10px;">
+                <input type="text" name="tool_id" placeholder="Código T-001">
+                <button type="submit" style="background:#444; width:auto;">OK</button>
+            </form>
+        </div>
+        
+        <div style="text-align:center; margin-top:10px;">
+            <a href="/logout" style="color:#ff4444;">[CERRAR SESIÓN]</a>
+        </div>
+    </div>
+
+    <script>
+        // --- LOGICA SALIDA ---
+        let carrito = [];
+        let currentItem = null;
+
+        function buscar(q) {
+            if(q.length<2){ document.getElementById('sugg').style.display='none'; return; }
+            fetch('/api/buscar_herramientas?q='+q).then(r=>r.json()).then(data=>{
+                let box = document.getElementById('sugg'); box.innerHTML='';
+                if(data.length>0){
+                    box.style.display='block';
+                    data.forEach(i=>{
+                        let d = document.createElement('div'); d.className='sugg-item';
+                        d.innerHTML=`<b>${i.nombre}</b> <small>(${i.tipo})</small>`;
+                        d.onclick=()=>{ 
+                            currentItem=i; document.getElementById('tool_search').value=i.nombre;
+                            box.style.display='none'; if(i.tipo==='INSUMO') document.getElementById('tool_qty').focus();
+                        }; box.appendChild(d);
+                    });
+                } else box.style.display='none';
+            });
+        }
+
+        function agregar() {
+            if(!currentItem) return alert("Seleccione ítem");
+            let qty = parseInt(document.getElementById('tool_qty').value);
+            if(qty > currentItem.stock) return alert("Sin stock suficiente");
+            carrito.push({...currentItem, cantidad: qty});
+            renderCart();
+            currentItem=null; document.getElementById('tool_search').value=''; document.getElementById('tool_qty').value='1';
+            document.getElementById('tool_search').focus();
+        }
+
+        function renderCart() {
+            let html=''; carrito.forEach((it,idx)=>{
+                let cls = it.tipo==='HERRAMIENTA'?'badge-tool':'badge-insumo';
+                html+=`<tr><td>${it.nombre}</td><td><span class="badge ${cls}">${it.tipo[0]}</span></td><td>${it.cantidad}</td><td><b style="color:red;cursor:pointer" onclick="del(${idx})">x</b></td></tr>`;
+            }); document.getElementById('cart_body').innerHTML=html;
+        }
+        function del(i){ carrito.splice(i,1); renderCart(); }
+
+        function finalizar() {
+            let w = document.getElementById('worker_id_out').value;
+            if(!w || carrito.length===0) return alert("Faltan datos");
+            fetch('/procesar_salida_masiva', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({worker_id: w, items: carrito})
+            }).then(r=>r.json()).then(d=>{
+                if(d.status==='ok'){
+                    window.open('/ticket/'+d.ticket_id, '_blank', 'width=400,height=600');
+                    carrito=[]; renderCart(); document.getElementById('worker_id_out').value='';
+                } else alert(d.msg);
+            });
+        }
+
+        // --- LOGICA DEVOLUCION (RUT o QR TICKET) ---
+        function buscarPendientes() {
+            let input = document.getElementById('scan_input').value.trim();
+            if(!input) return;
+            
+            // Detectar si es un QR de Ticket (Formato TICKET:XXXX)
+            let apiUrl = '';
+            
+            if(input.startsWith("TICKET:")) {
+                let ticketId = input.split(":")[1];
+                apiUrl = '/api/prestamos_ticket?ticket_id=' + ticketId;
+            } else {
+                // Asumimos que es RUT
+                apiUrl = '/api/prestamos_trabajador?worker_id=' + input;
+            }
+            
+            fetch(apiUrl)
+            .then(r=>r.json())
+            .then(data => {
+                let div = document.getElementById('pending_container');
+                div.innerHTML = '';
+                
+                if(data.length === 0) {
+                    div.innerHTML = '<p style="text-align:center; padding:20px; color:#2ecc71;">¡Todo devuelto! (O ticket no encontrado)</p>';
+                    return;
+                }
+
+                data.forEach(p => {
+                    let item = document.createElement('div');
+                    item.className = 'pending-item';
+                    item.innerHTML = `
+                        <div>
+                            <div style="color:#e67e22; font-weight:bold;">${p.nombre}</div>
+                            <small style="color:#888;">ID: ${p.tool_id} | Cant: ${p.cantidad} | ${p.fecha_salida.split(' ')[1]}</small>
+                        </div>
+                        <form action="/procesar_devolucion" method="POST">
+                            <input type="hidden" name="prestamo_id" value="${p.prestamo_id}">
+                            <button type="submit" class="btn-return-one">DEVOLVER</button>
+                        </form>
+                    `;
+                    div.appendChild(item);
+                });
+            });
+            
+            // Limpiar input para siguiente escaneo
+            document.getElementById('scan_input').value = '';
+            document.getElementById('scan_input').focus();
+        }
+    </script>
+</body>
+</html>

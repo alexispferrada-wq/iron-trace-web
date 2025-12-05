@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Configuración - Iron Trace</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; padding: 40px; display: flex; justify-content: center; }
+        .card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); width: 600px; }
+        h1 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+        
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
+        input[type="text"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 1em; box-sizing: border-box; }
+        
+        .btn-save { background: #3498db; color: white; border: none; padding: 15px 30px; font-size: 1.1em; border-radius: 4px; cursor: pointer; width: 100%; }
+        .btn-save:hover { background: #2980b9; }
+        
+        .back-link { display: block; text-align: center; margin-top: 20px; color: #7f8c8d; text-decoration: none; }
+        
+        .flash { background: #d4edda; color: #155724; padding: 15px; border-radius: 4px; margin-bottom: 20px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>⚙️ Configuración Global</h1>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for msg in messages %}
+                    <div class="flash">{{ msg }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="form-group">
+                <label>Nombre Empresa (Cabecera Ticket)</label>
+                <input type="text" name="empresa_nombre" value="{{ config['empresa_nombre'] }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Texto Pie de Página (Footer Ticket)</label>
+                <input type="text" name="ticket_footer" value="{{ config['ticket_footer'] }}" required>
+            </div>
+
+            <div class="form-group">
+                <label>Nombre Impresora (Sistema)</label>
+                <input type="text" name="impresora_nombre" value="{{ config['impresora_nombre'] }}">
+                <small style="color:#888;">Nombre del dispositivo en Windows/Mac (Ej: POS-80)</small>
+            </div>
+            
+            <div class="form-group">
+                <label>Ruta Base de Datos (Solo lectura)</label>
+                <input type="text" value="{{ config['db_path'] }}" disabled style="background:#eee; color:#888;">
+            </div>
+
+            <button type="submit" class="btn-save">GUARDAR CAMBIOS</button>
+        </form>
+        
+        <a href="/dashboard" class="back-link">⬅ Volver al Dashboard</a>
+    </div>
+
+</body>
+</html>

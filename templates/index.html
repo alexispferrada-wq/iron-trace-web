@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iron Trace Web 1.0</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        
+        /* Formulario */
+        form { display: grid; grid-template-columns: 1fr 2fr 1fr 1fr auto; gap: 10px; margin-bottom: 20px; background: #eee; padding: 15px; border-radius: 5px;}
+        input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background-color: #28a745; color: white; border: none; padding: 10px; cursor: pointer; border-radius: 4px;}
+        button:hover { background-color: #218838; }
+
+        /* Tabla */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #333; color: white; }
+        .btn-delete { background-color: #dc3545; color: white; text-decoration: none; padding: 5px 10px; border-radius: 3px; font-size: 0.8em;}
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>IRON TRACE WEB</h1>
+
+        <form action="/add" method="POST">
+            <input type="text" name="id" placeholder="ID (ej: A01)" required>
+            <input type="text" name="nombre" placeholder="Nombre Producto" required>
+            <input type="number" name="precio" placeholder="Precio" required>
+            <input type="number" name="stock" placeholder="Stock" required>
+            <button type="submit">Agregar</button>
+        </form>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Producto</th>
+                    <th>Precio</th>
+                    <th>Stock</th>
+                    <th>Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in productos %}
+                <tr>
+                    <td><b>{{ p['id'] }}</b></td>
+                    <td>{{ p['nombre'] }}</td>
+                    <td>${{ p['precio'] }}</td>
+                    <td>{{ p['stock'] }}</td>
+                    <td>
+                        <a href="/delete/{{ p['id'] }}" class="btn-delete">Eliminar</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>
