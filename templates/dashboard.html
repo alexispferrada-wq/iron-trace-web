@@ -3,85 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <title>Dashboard - Iron Trace</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
         
-        /* CABECERA */
-        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 25px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 25px; }
-        .logo { font-size: 1.2em; font-weight: bold; color: #2c3e50; display: flex; align-items: center; gap: 10px; }
-        .status-badge { background: #e8f5e9; color: #2ecc71; padding: 5px 12px; border-radius: 20px; font-size: 0.85em; font-weight: bold; display: flex; align-items: center; gap: 5px; }
-        .dot { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; display: inline-block; }
-        .logout { color: #e74c3c; text-decoration: none; font-weight: bold; font-size: 0.9em; }
+        /* HEADER ORIGINAL (ESTILO OSCURO) */
+        .header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; border-left: 5px solid #2c3e50; }
+        .status-indicator { font-size: 0.8em; padding: 5px 10px; border-radius: 20px; background: #eee; display: flex; align-items: center; gap: 5px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: #2ecc71; }
+        
+        /* ESTADÍSTICAS */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .stat-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-top: 4px solid #ccc; }
+        .stat-val { font-size: 1.8em; font-weight: bold; color: #2c3e50; margin: 10px 0; }
+        .stat-label { text-transform: uppercase; font-size: 0.8em; color: #7f8c8d; }
+        
+        /* LAYOUT PRINCIPAL */
+        .grid { display: grid; grid-template-columns: 3fr 1fr; gap: 25px; }
+        .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h2 { margin-top: 0; color: #2c3e50; font-size: 1.4em; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 20px; }
 
-        /* GRID PRINCIPAL */
-        .grid-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        
-        /* TARJETAS */
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        h2 { margin-top: 0; font-size: 1.1em; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
-        
-        /* BOTONES */
-        .btn { display: block; width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 6px; text-align: center; text-decoration: none; font-weight: bold; color: white; transition: 0.2s; box-sizing: border-box; font-size: 0.9em; }
-        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
+        /* BOTONES DE ACCIÓN (Corregidos) */
+        .btn-config { background: #34495e; color: white; padding: 12px; display: block; text-align: center; text-decoration: none; border-radius: 4px; font-weight: bold; margin-bottom: 10px; }
+        .btn-config:hover { background: #2c3e50; }
         
         /* COLORES BOTONES */
-        .btn-green { background-color: #27ae60; }
-        .btn-blue { background-color: #2980b9; }
-        .btn-purple { background-color: #8e44ad; }
-        .btn-orange { background-color: #d35400; }
-        .btn-teal { background-color: #16a085; }
-
-        /* KPI TEXTO */
-        .kpi-text { font-size: 0.9em; color: #666; margin-bottom: 15px; }
+        .btn-green { background: #27ae60; }
+        .btn-orange { background: #d35400; }
+        .btn-blue { background: #2980b9; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        th { background-color: #34495e; color: white; padding: 10px; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #eee; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="logo">🏗️ IRON TRACE</div>
-        <div class="status-badge"><span class="dot"></span> ONLINE</div>
         <div>
-            Hola, {{ session['user']|upper }} | <a href="/logout" class="logout">Salir</a>
+            <span style="font-size:1.2em; font-weight:bold; letter-spacing: 2px;">IRON TRACE</span>
+            <small>v2.0 Enterprise</small>
+        </div>
+        <div class="status-indicator"><span class="dot"></span> DB CONECTADA</div>
+        <div>👋 {{ session['user'] | upper }} <a href="/logout" style="color:red; margin-left:10px;">[Salir]</a></div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card" style="border-color: #e67e22;">
+            <div class="stat-label">Gasto Insumos (Hoy)</div>
+            <div class="stat-val" style="color: #e67e22;">${{ "{:,.0f}".format(stats.insumos_hoy) }}</div>
+        </div>
+        <div class="stat-card" style="border-color: #3498db;">
+            <div class="stat-label">Herramientas en Terreno</div>
+            <div class="stat-val" style="color: #3498db;">{{ stats.prestamos_qty }}</div>
         </div>
     </div>
 
-    <div class="grid-container">
-        
+    <div class="grid">
         <div class="card">
-            <h2>📊 Operaciones</h2>
-            <a href="/inventario" class="btn btn-green">📦 GESTIÓN INVENTARIO Y FACTURAS</a>
-            <a href="/reportes" class="btn btn-blue">📄 VER REPORTES DE MOVIMIENTOS</a>
+            <h2>⚠️ Herramientas Activas (En uso)</h2>
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table>
+                    <thead><tr><th>Trabajador</th><th>Herramienta</th><th>Fecha Salida</th></tr></thead>
+                    <tbody>
+                        {% for p in en_uso %}
+                        <tr>
+                            <td><b>{{ p['worker_id'] }}</b></td>
+                            <td>{{ p['nombre'] }} <small>({{ p['tool_id'] }})</small></td>
+                            <td>{{ p['fecha_salida'] }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" style="text-align:center;">Bodega OK.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        <div class="card">
-            <h2>📈 Reportes</h2>
-            <a href="/reportes" class="btn btn-green">💰 VER GASTOS DETALLADOS</a>
-        </div>
+        <div style="display: flex; flex-direction: column;">
+            
+            <div class="card" style="border-left: 5px solid #2ecc71;">
+                <h2>📊 Gestión</h2>
+                <a href="/inventario" class="btn-config btn-green">📦 INVENTARIO & FACTURAS</a>
+                <a href="/reportes" class="btn-config btn-blue">📄 REPORTES MOVIMIENTOS</a>
+            </div>
 
-        <div class="card">
-            <h2>👥 Personal</h2>
-            {% if rol == 'admin' or rol == 'supervisor' %}
-                <a href="/usuarios" class="btn btn-purple">🔐 GESTIÓN USUARIOS SISTEMA</a>
+            <div class="card" style="border-left: 5px solid #e67e22;">
+                <h2>👥 Personal</h2>
+                {% if rol == 'admin' or rol == 'supervisor' %}
+                    <a href="/usuarios" class="btn-config" style="background:#8e44ad;">GESTIÓN USUARIOS SISTEMA</a>
+                {% endif %}
+                <a href="/trabajadores" class="btn-config btn-orange">BASE TRABAJADORES</a>
+            </div>
+
+            {% if rol == 'admin' %}
+            <div class="card" style="border-left: 5px solid #34495e;">
+                <h2>⚙️ Admin</h2>
+                <a href="/admin/config" class="btn-config">CONFIGURACIÓN GLOBAL</a>
+            </div>
             {% endif %}
-            <a href="/trabajadores" class="btn btn-orange">👷 BASE DE TRABAJADORES</a>
         </div>
-
-        <div class="card">
-            <h2>📦 Inventario Total</h2>
-            <p class="kpi-text">
-                <b>{{ total_items }}</b> Ítems registrados en bodega.
-            </p>
-            <a href="/inventario" class="btn btn-teal">📋 GESTIONAR INVENTARIO</a>
-        </div>
-
-        {% if rol == 'admin' %}
-        <div class="card">
-            <h2>⚙️ Sistema</h2>
-            <a href="/admin/config" class="btn btn-blue" style="background:#34495e;">🔧 CONFIGURACIÓN GLOBAL</a>
-        </div>
-        {% endif %}
-
     </div>
 
 </body>
