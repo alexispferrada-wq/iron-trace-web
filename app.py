@@ -420,6 +420,58 @@ def admin_config():
     }
     
     return render_template('config_admin.html', config=cfg)
+
+@app.route('/reportes', methods=['GET', 'POST'])
+def reportes():
+    if session.get('rol') not in ['admin', 'supervisor']: return redirect(url_for('login'))
+
+    search_term = request.form.get('search_term', '').strip().upper()
+    
+    # CORRECCIÓN: Selección explícita para evitar choque de nombres de columnas
+    sql = '''
+        SELECT 
+            p.id, 
+            p.fecha_salida, 
+            p.worker_id, 
+            p.tool_id, 
+            p.tipo_item as tipo, 
+            p.cantidad, 
+            p.estado,
+            prod.nombre as nombre, 
+            prod.precio as precio
+        FROM prestamos p 
+        JOIN productos prod ON p.tool_id = prod.id
+    '''
+    params = []
+    
+    if search_term:
+        sql += ' WHERE p.worker_id LIKE %s OR p.tool_id LIKE %s'
+        params.append(f'%{search_term}%')
+        params.append(f'%{search_term}%')
+    
+    sql += ' ORDER BY p.fecha_salida DESC'
+    
+    try:
+        movimientos = ejecutar_sql(sql, tuple(params))
+    except Exception as e:
+        print(f"Error Reportes: {e}")
+        movimientos = []
+    
+    total_insumos = 0
+    items_insumos = 0
+    for m in movimientos:
+        # Asegurar que manejamos diccionarios
+        reg = dict(m)
+        tipo = reg.get('tipo', 'HERRAMIENTA')
+        if tipo == 'INSUMO':
+            total_insumos += (reg.get('precio') or 0) * (reg.get('cantidad') or 0)
+            items_insumos += (reg.get('cantidad') or 0)
+
+    return render_template('reportes.html', 
+                           movimientos=movimientos, 
+                           total_insumos=total_insumos,
+                           items_insumos=items_insumos,
+                           search_term=search_term)
         
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
