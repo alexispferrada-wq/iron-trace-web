@@ -89,7 +89,7 @@ def dashboard():
     if session.get('rol') == 'operador': return redirect(url_for('panel_operador'))
     if 'user' not in session: return redirect(url_for('login'))
     
-    # KPIs Básicos
+    # 1. KPIs Básicos
     stats = {'insumos_hoy': 0, 'prestamos_valor': 0, 'prestamos_activos_qty': 0}
     fecha_hoy = datetime.now().strftime("%Y-%m-%d")
     
@@ -103,12 +103,20 @@ def dashboard():
         if res:
             stats['prestamos_valor'] = res['total'] if res['total'] else 0
             stats['prestamos_activos_qty'] = res['qty']
-    except: pass # Evita crash si tablas vacías
+    except: pass 
 
+    # 2. Tabla En Uso
     en_uso = ejecutar_sql("SELECT p.*, prod.nombre FROM prestamos p JOIN productos prod ON p.tool_id = prod.id WHERE p.estado = 'ACTIVO' ORDER BY p.fecha_salida DESC")
     
-    return render_template('dashboard.html', stats=stats, en_uso=en_uso, rol=session['rol'])
-
+    # 3. Datos de Estado (ESTO FALTABA)
+    db_source = "PostgreSQL Nube" if DATABASE_URL else "SQLite Local"
+    
+    return render_template('dashboard.html', 
+                           stats=stats, 
+                           en_uso=en_uso, 
+                           rol=session['rol'],
+                           db_status=True,    # <--- ¡ESTO ENCIENDE EL PUNTO VERDE!
+                           db_path=db_source) # <--- Muestra la ruta
 # --- MÓDULO GESTIÓN DE USUARIOS (MEJORADO) ---
 @app.route('/usuarios')
 def gestion_usuarios():
@@ -383,6 +391,35 @@ def reset_force():
         """
     except Exception as e:
         return f"<h1>Error: {e}</h1>"
+
+@app.route('/admin/config', methods=['GET', 'POST'])
+def admin_config():
+    if session.get('rol') != 'admin': return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        # Guardar o Actualizar (Upsert manual)
+        campos = ['empresa_nombre', 'ticket_footer', 'impresora_nombre', 'empresa_direccion']
+        for campo in campos:
+            val = request.form.get(campo, '')
+            # Intentamos actualizar, si no afecta filas (no existe), insertamos
+            ejecutar_sql('DELETE FROM config WHERE clave = %s', (campo,))
+            ejecutar_sql('INSERT INTO config (clave, valor) VALUES (%s, %s)', (campo, val))
+            
+        flash('✅ Configuración actualizada')
+        
+    # Cargar configuración con valores por defecto (Anti-Caídas)
+    cfg_rows = ejecutar_sql('SELECT * FROM config')
+    cfg_db = {row['clave']: row['valor'] for row in cfg_rows}
+    
+    cfg = {
+        'empresa_nombre': cfg_db.get('empresa_nombre', 'IRON TRACE CORP'),
+        'ticket_footer': cfg_db.get('ticket_footer', 'Gracias por su trabajo seguro'),
+        'impresora_nombre': cfg_db.get('impresora_nombre', 'POS-80'),
+        'empresa_direccion': cfg_db.get('empresa_direccion', 'Faena Minera'),
+        'db_path': 'PostgreSQL' if DATABASE_URL else 'Local'
+    }
+    
+    return render_template('config_admin.html', config=cfg)
         
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
