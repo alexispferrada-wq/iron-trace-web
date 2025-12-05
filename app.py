@@ -257,6 +257,52 @@ def subir_factura():
         except Exception as e: flash(f'Error: {e}')
     return redirect(url_for('vista_inventario'))
 
+# --- NUEVA RUTA PARA INGRESO MANUAL 1 A 1 ---
+@app.route('/inventario/ingreso_manual', methods=['POST'])
+def ingreso_manual_stock():
+    if session.get('rol') not in ['admin', 'supervisor']: return "Acceso Denegado"
+    
+    doc = request.form.get('num_documento', 'MANUAL').upper()
+    pid = request.form.get('id_producto').strip()
+    cant = int(request.form.get('cantidad', 0))
+    precio = request.form.get('precio')
+    
+    if not pid or cant < 1:
+        flash('❌ Datos inválidos.')
+        return redirect(url_for('vista_inventario'))
+
+    try:
+        # 1. Registrar Cabecera en Historial (para que aparezca en la tabla de abajo)
+        ejecutar_sql('INSERT INTO facturas (numero, fecha, usuario) VALUES (%s, %s, %s)',
+                     (f"{doc} (Item: {pid})", datetime.now().strftime("%Y-%m-%d %H:%M"), session['user']))
+
+        # 2. Verificar existencia
+        prod = ejecutar_sql('SELECT * FROM productos WHERE id=%s', (pid,), one=True)
+        
+        if prod:
+            # 3. Actualizar Stock
+            sql = 'UPDATE productos SET stock = stock + %s'
+            params = [cant]
+            if precio and float(precio) > 0:
+                sql += ', precio = %s'
+                params.append(float(precio))
+            sql += ' WHERE id = %s'
+            params.append(pid)
+            
+            ejecutar_sql(sql, tuple(params))
+            flash(f'✅ Stock actualizado: +{cant} unidades al producto {pid}.')
+        else:
+            # 3b. Crear si no existe (Como INSUMO por defecto)
+            precio_val = float(precio) if precio else 0
+            ejecutar_sql('INSERT INTO productos (id, nombre, precio, stock, tipo) VALUES (%s, %s, %s, %s, %s)',
+                         (pid, f'NUEVO MANUAL ({pid})', precio_val, cant, 'INSUMO'))
+            flash(f'✅ Producto nuevo creado: {pid} con stock {cant}.')
+            
+    except Exception as e:
+        flash(f'❌ Error: {e}')
+        
+    return redirect(url_for('vista_inventario'))
+
 # --- CARGA TRABAJADORES ---
 @app.route('/trabajadores')
 def gestion_trabajadores():
