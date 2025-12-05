@@ -555,6 +555,90 @@ def procesar_devolucion():
 
     return redirect(url_for('panel_operador'))
 
+# --- LÓGICA DE DEVOLUCIÓN AVANZADA (PARCIAL Y TOTAL) ---
+
+@app.route('/procesar_devolucion_compleja', methods=['POST'])
+def procesar_devolucion_compleja():
+    data = request.json
+    items_a_devolver = data.get('items', []) # Lista de {prestamo_id, cantidad_a_devolver}
+    
+    ids_procesados = []
+    rut_trabajador = ""
+
+    try:
+        for item in items_a_devolver:
+            pid = item['id']
+            qty_return = int(item['cantidad'])
+            
+            # 1. Obtener préstamo original
+            prestamo = ejecutar_sql('SELECT * FROM prestamos WHERE id=%s', (pid,), one=True)
+            if not prestamo or prestamo['estado'] != 'ACTIVO': continue
+            
+            rut_trabajador = prestamo['worker_id']
+            qty_original = prestamo['cantidad']
+            tool_id = prestamo['tool_id']
+            
+            # 2. Devolver al Stock Físico
+            ejecutar_sql('UPDATE productos SET stock = stock + %s WHERE id = %s', (qty_return, tool_id))
+            
+            # 3. Lógica de Partición (Si devuelve menos de lo que debe)
+            if qty_return < qty_original:
+                # A. Actualizamos el préstamo original restándole lo que devolvió (queda debiendo el resto)
+                nuevo_saldo = qty_original - qty_return
+                ejecutar_sql('UPDATE prestamos SET cantidad = %s WHERE id = %s', (nuevo_saldo, pid))
+                
+                # B. Creamos un registro nuevo "CERRADO" solo por lo que devolvió (para historial y ticket)
+                # Copiamos datos del original pero con estado DEVUELTO
+                ejecutar_sql('''
+                    INSERT INTO prestamos (transaction_id, worker_id, tool_id, tipo_item, cantidad, fecha_salida, fecha_regreso, estado) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (prestamo['transaction_id'], rut_trabajador, tool_id, prestamo['tipo_item'], qty_return, 
+                      prestamo['fecha_salida'], datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 'DEVUELTO'))
+                
+                # Capturamos el ID de este nuevo registro para el ticket
+                nuevo_id = ejecutar_sql('SELECT id FROM prestamos WHERE worker_id=%s AND estado=%s ORDER BY id DESC LIMIT 1', 
+                                        (rut_trabajador, 'DEVUELTO'), one=True)
+                ids_procesados.append(str(nuevo_id['id']))
+
+            else:
+                # Devolución Total: Simplemente cerramos el registro actual
+                ejecutar_sql('UPDATE prestamos SET estado = %s, fecha_regreso = %s WHERE id = %s', 
+                             ('DEVUELTO', datetime.now().strftime("%Y-%m-%d %H:%M:%S"), pid))
+                ids_procesados.append(str(pid))
+
+        return jsonify({'status': 'ok', 'ids': ",".join(ids_procesados)})
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'msg': str(e)})
+
+@app.route('/ticket_devolucion')
+def ver_ticket_devolucion():
+    ids_str = request.args.get('ids', '')
+    if not ids_str: return "Error: Sin IDs"
+    
+    # Convertir "1,2,3" a tupla para SQL
+    ids_tuple = tuple(ids_str.split(','))
+    
+    # Truco para SQL con tupla de 1 elemento
+    sql = f"SELECT p.*, prod.nombre FROM prestamos p JOIN productos prod ON p.tool_id = prod.id WHERE p.id IN ({','.join(['%s']*len(ids_tuple))})"
+    
+    items = ejecutar_sql(sql, ids_tuple)
+    if not items: return "Error generando ticket"
+    
+    # Datos trabajador
+    worker = ejecutar_sql('SELECT * FROM trabajadores WHERE rut=%s', (items[0]['worker_id'],), one=True)
+    
+    # Configuración
+    try: cfg = {r['clave']: r['valor'] for r in ejecutar_sql("SELECT * FROM config")}
+    except: cfg = {'empresa_nombre':'IronTrace'}
+
+    return render_template('ticket_devolucion.html', 
+                           items=items, 
+                           worker=worker, 
+                           fecha=datetime.now().strftime("%d/%m/%Y %H:%M"),
+                           config=cfg,
+                           ids=ids_str)
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
