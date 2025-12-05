@@ -526,37 +526,22 @@ def ajuste():
     ejecutar_sql('UPDATE productos SET stock = %s WHERE id = %s', (request.form['stock_real'], request.form['id']))
     return redirect(url_for('dashboard'))
 
-@app.route('/fix_security_patch')
-def fix_security():
+# --- PARCHE DE ESTRUCTURA (SOLO PARA POSTGRESQL/RENDER) ---
+@app.route('/fix_db_structure')
+def fix_structure():
     try:
-        # 1. Encriptamos las claves por defecto
-        pass_admin = generate_password_hash('admin123') # Clave nueva para admin
-        pass_super = generate_password_hash('123')      # Clave nueva para super
-        pass_oper  = generate_password_hash('123')      # Clave nueva para oper
-
-        # 2. Actualizamos la Base de Datos
-        # Admin
-        ejecutar_sql("UPDATE usuarios SET password = %s WHERE username = 'admin'", (pass_admin,))
-        # Supervisor
-        ejecutar_sql("UPDATE usuarios SET password = %s WHERE username = 'super'", (pass_super,))
-        # Operador
-        ejecutar_sql("UPDATE usuarios SET password = %s WHERE username = 'oper'", (pass_oper,))
+        # Esta orden le dice a la Base de Datos: 
+        # "Por favor, cambia la columna password para que soporte hasta 255 caracteres"
+        ejecutar_sql("ALTER TABLE usuarios ALTER COLUMN password TYPE VARCHAR(255)")
         
         return """
-        <h1 style='color:green; font-family:sans-serif;'>✅ PARCHE DE SEGURIDAD APLICADO</h1>
-        <p>Las contraseñas han sido encriptadas exitosamente.</p>
-        <ul>
-            <li><b>admin</b>: admin123</li>
-            <li><b>super</b>: 123</li>
-            <li><b>oper</b>: 123</li>
-        </ul>
-        <a href='/login'>[ IR AL LOGIN ]</a>
+        <h1 style='color:blue;'>✅ ESTRUCTURA ACTUALIZADA</h1>
+        <p>La columna 'password' ahora soporta encriptación (255 caracteres).</p>
+        <p>Ahora puedes volver a intentar el parche de seguridad.</p>
+        <a href='/fix_security_patch'>[ 2. APLICAR PARCHE DE SEGURIDAD ]</a>
         """
     except Exception as e:
-        return f"<h1 style='color:red'>ERROR: {str(e)}</h1>"
-
-
-
+        return f"<h1 style='color:red'>Error: {str(e)}</h1>"
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
