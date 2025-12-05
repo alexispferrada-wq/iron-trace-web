@@ -383,6 +383,64 @@ def fix_db_final():
     except Exception as e:
         return f"<h1 style='color:red'>FALLO CRÍTICO: {e}</h1>"
 
+# --- MÓDULO REPORTES (FALTABA ESTO) ---
+@app.route('/reportes', methods=['GET', 'POST'])
+def reportes():
+    if session.get('rol') not in ['admin', 'supervisor']: return redirect(url_for('login'))
+
+    search_term = request.form.get('search_term', '').strip().upper()
+    
+    # Consulta robusta con selección explícita de columnas
+    sql = '''
+        SELECT 
+            p.id, 
+            p.fecha_salida, 
+            p.worker_id, 
+            p.tool_id, 
+            p.tipo_item as tipo, 
+            p.cantidad, 
+            p.estado,
+            prod.nombre as nombre, 
+            prod.precio as precio
+        FROM prestamos p 
+        JOIN productos prod ON p.tool_id = prod.id
+    '''
+    params = []
+    
+    if search_term:
+        sql += ' WHERE p.worker_id LIKE %s OR p.tool_id LIKE %s'
+        params.append(f'%{search_term}%')
+        params.append(f'%{search_term}%')
+    
+    sql += ' ORDER BY p.fecha_salida DESC'
+    
+    try:
+        movimientos = ejecutar_sql(sql, tuple(params))
+    except Exception as e:
+        print(f"Error Reportes: {e}")
+        movimientos = []
+    
+    total_insumos = 0
+    items_insumos = 0
+    
+    # Procesar totales
+    for m in movimientos:
+        # Aseguramos que sea diccionario (para compatibilidad Postgres/SQLite)
+        reg = dict(m) if isinstance(m, (dict, sqlite3.Row)) else m
+        
+        tipo = reg.get('tipo', 'HERRAMIENTA')
+        if tipo == 'INSUMO':
+            precio = reg.get('precio') or 0
+            cantidad = reg.get('cantidad') or 0
+            total_insumos += precio * cantidad
+            items_insumos += cantidad
+
+    return render_template('reportes.html', 
+                           movimientos=movimientos, 
+                           total_insumos=total_insumos,
+                           items_insumos=items_insumos,
+                           search_term=search_term)
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
