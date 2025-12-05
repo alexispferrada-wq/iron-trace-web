@@ -6,265 +6,217 @@
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #111; color: #eee; margin: 0; display: flex; height: 100vh; }
         
-        /* IZQUIERDA: SALIDA */
-        .col-salida { width: 55%; padding: 20px; border-right: 2px solid #333; display: flex; flex-direction: column; background: #1a1a1a; }
-        /* DERECHA: DEVOLUCION */
-        .col-devolucion { width: 45%; padding: 20px; background: #000; display: flex; flex-direction: column; }
+        /* LAYOUT 50/50 */
+        .col-salida { width: 50%; padding: 20px; border-right: 2px solid #333; display: flex; flex-direction: column; background: #1a1a1a; }
+        .col-devolucion { width: 50%; padding: 20px; background: #000; display: flex; flex-direction: column; }
 
-        h2 { margin-top: 0; border-bottom: 2px solid #444; padding-bottom: 10px; color: #aaa; }
+        h2 { margin-top: 0; border-bottom: 2px solid #444; padding-bottom: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 2px; }
         
+        /* INPUTS */
         input { padding: 12px; font-size: 1.1em; background: #222; color: white; border: 1px solid #555; text-align: center; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
-        input:focus { outline: 2px solid #3498db; }
+        input:focus { outline: 2px solid #3498db; background: #333; }
         
-        .form-row { display: flex; gap: 10px; }
-        .cart-container { flex: 1; overflow-y: auto; border: 1px solid #333; margin: 10px 0; background: #111; }
-        
+        /* TABLAS Y LISTAS */
+        .table-scroll { flex: 1; overflow-y: auto; border: 1px solid #333; margin: 10px 0; background: #111; }
         table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
-        th { text-align: left; background: #222; padding: 8px; position: sticky; top: 0; }
-        td { padding: 8px; border-bottom: 1px solid #333; }
+        th { text-align: left; background: #222; padding: 10px; position: sticky; top: 0; color: #888; }
+        td { padding: 10px; border-bottom: 1px solid #333; vertical-align: middle; }
         
-        button { cursor: pointer; border: none; padding: 10px; font-weight: bold; width: 100%; font-size: 1em; border-radius: 4px; }
-        .btn-add { background: #3498db; color: white; width: auto; flex: 1; }
-        .btn-finish { background: #27ae60; color: white; padding: 20px; font-size: 1.3em; margin-top: 10px; }
+        /* SUGERENCIAS DE BUSQUEDA */
+        .suggestions { background: #2c3e50; position: absolute; width: 60%; max-height: 250px; overflow-y: auto; display: none; border: 1px solid #34495e; z-index: 100; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .sugg-item { padding: 12px; cursor: pointer; border-bottom: 1px solid #34495e; }
+        .sugg-item:hover { background: #3498db; color: white; }
         
-        /* ESTILOS DEVOLUCIÓN */
-        .search-return-box { display: flex; gap: 10px; margin-bottom: 15px; }
-        .btn-search-ret { background: #e67e22; color: white; width: auto; flex: 1; }
+        /* BOTONES */
+        button { cursor: pointer; border: none; padding: 10px; font-weight: bold; border-radius: 4px; transition: 0.2s; }
+        .btn-add { background: #3498db; color: white; width: 15%; font-size: 1.2em; }
+        .btn-finish { background: #27ae60; color: white; padding: 15px; font-size: 1.2em; width: 100%; margin-top: auto; }
+        .btn-confirm-ret { background: #e67e22; color: white; padding: 15px; font-size: 1.2em; width: 100%; margin-top: auto; display: none; }
         
-        .pending-list { flex: 1; overflow-y: auto; border: 1px solid #333; }
-        .pending-item { padding: 10px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
-        .pending-item:hover { background: #111; }
-        .btn-return-one { background: #e67e22; color: white; width: auto; padding: 5px 15px; font-size: 0.9em; }
-
-        .suggestions { background: #333; position: absolute; width: 60%; max-height: 200px; overflow-y: auto; display: none; border: 1px solid #555; z-index: 100; }
-        .sugg-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #444; }
-        .sugg-item:hover { background: #444; }
+        /* CHECKBOX CUSTOM */
+        .check-big { transform: scale(1.5); cursor: pointer; accent-color: #e67e22; }
+        .qty-input { width: 60px; padding: 5px; font-size: 1em; text-align: center; margin: 0; display: inline-block; background: #333; border: 1px solid #555; }
         
         .badge { padding: 3px 8px; border-radius: 4px; font-size: 0.8em; }
         .badge-tool { background: #3498db; color: white; }
         .badge-insumo { background: #f1c40f; color: black; }
-        
-        .flash { background: #2ecc71; color: black; padding: 10px; margin-bottom: 10px; text-align: center; border-radius: 4px; }
     </style>
 </head>
 <body>
 
     <div class="col-salida">
-        <h2 style="color:#3498db;">📤 SALIDA / PRÉSTAMO</h2>
+        <h2 style="color:#3498db;">📤 Nuevo Préstamo</h2>
         
-        <label>TRABAJADOR</label>
-        <input type="text" id="worker_id_out" placeholder="Escanear RUT" autofocus>
-
-        <label>ITEM A AGREGAR (Buscar)</label>
-        <div class="form-row">
-            <div style="flex: 3; position: relative;">
-                <input type="text" id="tool_search" placeholder="Escriba para buscar..." onkeyup="buscar(this.value)" autocomplete="off">
-                <div id="sugg" class="suggestions"></div>
-            </div>
-            <div style="flex: 1;">
-                <input type="number" id="tool_qty" value="1" min="1">
-            </div>
+        <input type="text" id="worker_out" placeholder="1. Escanear RUT Trabajador" autofocus>
+        
+        <div style="display: flex; gap: 10px; position: relative;">
+            <input type="text" id="tool_search" placeholder="2. Buscar Herramienta..." onkeyup="buscar(this.value)" autocomplete="off" style="flex: 3;">
+            <input type="number" id="tool_qty" value="1" min="1" style="flex: 1;">
             <button class="btn-add" onclick="agregar()">+</button>
+            <div id="sugg" class="suggestions"></div>
         </div>
 
-        <div class="cart-container">
-            <table>
-                <thead><tr><th>Descripción</th><th>Tipo</th><th>Cant.</th><th>X</th></tr></thead>
-                <tbody id="cart_body"></tbody>
+        <div class="table-scroll">
+            <table id="cart_table">
+                <thead><tr><th>Ítem</th><th>Cant.</th><th>X</th></tr></thead>
+                <tbody></tbody>
             </table>
         </div>
-        <button class="btn-finish" onclick="finalizar()">CONFIRMAR SALIDA</button>
+        
+        <button class="btn-finish" onclick="finalizarSalida()">CONFIRMAR SALIDA & IMPRIMIR</button>
     </div>
 
     <div class="col-devolucion">
-        <h2 style="color:#e67e22;">📥 DEVOLUCIÓN</h2>
+        <h2 style="color:#e67e22;">📥 Recepción / Devolución</h2>
         
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}<div class="flash">{{ messages[0] }}</div>{% endif %}
-        {% endwith %}
-
-        <label>BUSCAR (Ticket o RUT)</label>
-        <div class="search-return-box">
-            <input type="text" id="scan_input" placeholder="Escanee QR o escriba RUT..." onchange="buscarPendientes()">
-            <button class="btn-search-ret" onclick="buscarPendientes()">BUSCAR</button>
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="scan_ret" placeholder="Escanear RUT o Ticket..." onchange="buscarPendientes()">
+            <button onclick="buscarPendientes()" style="background:#e67e22; color:white; width:25%;">BUSCAR</button>
         </div>
 
-        <div id="loading_msg" style="display:none; color:yellow; text-align:center;">Buscando...</div>
-
-        <div class="pending-list" id="pending_container">
-            <p style="text-align:center; color:#666; padding:20px;">
-                Aquí aparecerán los ítems pendientes de devolución.
+        <div class="table-scroll" id="return_area">
+            <p style="text-align:center; color:#666; margin-top:50px;">
+                Ingrese el RUT del trabajador para ver qué debe.
             </p>
         </div>
-        
-        <div style="margin-top:auto; padding-top:10px; border-top:1px dashed #444;">
-            <p style="font-size:0.8em; color:#888; text-align:center;">
-                ¿El ticket no funciona? Ingrese el código de la herramienta:
-            </p>
-            <form action="/procesar_devolucion" method="POST" style="display:flex; gap:10px;">
-                <input type="text" name="tool_id" placeholder="Ej: TAL-HIL-01" required>
-                <button type="submit" style="background:#444; width:auto;">DEVOLVER</button>
-            </form>
-        </div>
+
+        <button id="btn_process_ret" class="btn-confirm-ret" onclick="procesarDevolucionMasiva()">
+            CONFIRMAR RECEPCIÓN SELECCIONADA
+        </button>
         
         <div style="text-align:center; margin-top:10px;">
-            <a href="/logout" style="color:#ff4444; text-decoration:none; font-size:0.9em;">[CERRAR SESIÓN]</a>
+            <a href="/logout" style="color:#ff4444; text-decoration:none;">[CERRAR SESIÓN]</a>
         </div>
     </div>
 
     <script>
-        // --- LÓGICA SALIDA (IZQUIERDA) ---
+        // --- LOGICA SALIDA ---
         let carrito = [];
         let currentItem = null;
 
         function buscar(q) {
-            // BUSQUEDA INMEDIATA (Desde 1 letra)
             if(q.length < 1){ document.getElementById('sugg').style.display='none'; return; }
-            
-            fetch('/api/buscar_herramientas?q='+q)
-            .then(r=>r.json())
-            .then(data=>{
-                let box = document.getElementById('sugg'); 
-                box.innerHTML='';
-                if(data.length > 0){
+            fetch('/api/buscar_herramientas?q='+q).then(r=>r.json()).then(data=>{
+                let box = document.getElementById('sugg'); box.innerHTML='';
+                if(data.length>0){
                     box.style.display='block';
                     data.forEach(i=>{
-                        let d = document.createElement('div'); 
-                        d.className='sugg-item';
-                        // Muestra stock disponible en verde o rojo
-                        let stockColor = i.stock > 0 ? '#2ecc71' : '#e74c3c';
-                        d.innerHTML=`
-                            <div style="font-weight:bold;">${i.nombre}</div>
-                            <div style="font-size:0.8em; color:#ccc;">
-                                ID: ${i.id} | <span style="color:${stockColor}">Stock: ${i.stock}</span>
-                            </div>`;
-                        
+                        let d = document.createElement('div'); d.className='sugg-item';
+                        let color = i.stock > 0 ? '#2ecc71':'#e74c3c';
+                        d.innerHTML = `<b>${i.nombre}</b> <span style='float:right; color:${color}'>Stock: ${i.stock}</span>`;
                         d.onclick=()=>{ 
-                            currentItem=i; 
-                            document.getElementById('tool_search').value=i.nombre;
+                            currentItem=i; document.getElementById('tool_search').value=i.nombre;
                             box.style.display='none'; 
-                            // Si es insumo, enfocar cantidad para pedir varios
                             if(i.tipo==='INSUMO') document.getElementById('tool_qty').select();
                             else document.getElementById('tool_qty').focus();
-                        }; 
-                        box.appendChild(d);
+                        }; box.appendChild(d);
                     });
-                } else {
-                    box.style.display='none';
-                }
+                } else box.style.display='none';
             });
         }
 
         function agregar() {
-            if(!currentItem) return alert("Seleccione un ítem del listado.");
+            if(!currentItem) return alert("Seleccione ítem");
             let qty = parseInt(document.getElementById('tool_qty').value);
-            if(qty > currentItem.stock) return alert("❌ Stock insuficiente. Quedan: " + currentItem.stock);
-            
+            if(qty > currentItem.stock) return alert("Stock insuficiente");
             carrito.push({...currentItem, cantidad: qty});
             renderCart();
-            
-            // Reset para seguir pistoleando rápido
-            currentItem=null; 
-            document.getElementById('tool_search').value=''; 
-            document.getElementById('tool_qty').value='1';
+            currentItem=null; document.getElementById('tool_search').value=''; document.getElementById('tool_qty').value='1';
             document.getElementById('tool_search').focus();
         }
 
         function renderCart() {
-            let html=''; 
-            carrito.forEach((it,idx)=>{
-                let cls = it.tipo==='HERRAMIENTA'?'badge-tool':'badge-insumo';
-                html+=`<tr>
-                    <td>${it.nombre}</td>
-                    <td><span class="badge ${cls}">${it.tipo[0]}</span></td>
-                    <td style="text-align:center;">${it.cantidad}</td>
-                    <td><b style="color:#e74c3c; cursor:pointer;" onclick="del(${idx})">✖</b></td>
-                </tr>`;
-            }); 
-            document.getElementById('cart_body').innerHTML=html;
+            let tbody = document.querySelector('#cart_table tbody'); tbody.innerHTML='';
+            carrito.forEach((it,i)=>{
+                tbody.innerHTML += `<tr><td>${it.nombre}</td><td style='text-align:center'>${it.cantidad}</td><td style='color:#e74c3c; cursor:pointer' onclick='carrito.splice(${i},1);renderCart()'>✖</td></tr>`;
+            });
         }
-        function del(i){ carrito.splice(i,1); renderCart(); }
 
-        function finalizar() {
-            let w = document.getElementById('worker_id_out').value.trim();
-            if(!w) return alert("⚠️ Falta escanear el Trabajador");
-            if(carrito.length===0) return alert("⚠️ El carro está vacío");
-            
+        function finalizarSalida() {
+            let w = document.getElementById('worker_out').value.trim();
+            if(!w || carrito.length===0) return alert("Faltan datos");
             fetch('/procesar_salida_masiva', {
                 method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({worker_id: w, items: carrito})
             }).then(r=>r.json()).then(d=>{
                 if(d.status==='ok'){
-                    // Abrir ticket e limpiar
                     window.open('/ticket/'+d.ticket_id, '_blank', 'width=400,height=600');
-                    carrito=[]; renderCart(); 
-                    document.getElementById('worker_id_out').value='';
-                    document.getElementById('worker_id_out').focus();
-                } else {
-                    alert("ERROR: " + d.msg);
-                }
+                    carrito=[]; renderCart(); document.getElementById('worker_out').value='';
+                } else alert(d.msg);
             });
         }
 
-        // --- LÓGICA DEVOLUCIÓN INTELIGENTE (DERECHA) ---
+        // --- LOGICA DEVOLUCIÓN AVANZADA ---
         function buscarPendientes() {
-            let input = document.getElementById('scan_input').value.trim().toUpperCase();
-            if(!input) return;
-
-            let div = document.getElementById('pending_container');
-            div.innerHTML = '<p style="text-align:center; color:yellow;">🔍 Buscando...</p>';
-
-            // ESTRATEGIA: Intentar buscar como TICKET primero. Si falla, buscar como RUT.
-            // Limpiamos prefijo si viene del scanner
-            let limpio = input.replace('TICKET:', '').trim();
-
-            // 1. Intento por TICKET
-            fetch('/api/prestamos_ticket?ticket_id=' + limpio)
-            .then(r => r.json())
-            .then(dataTicket => {
-                if(dataTicket.length > 0) {
-                    renderPendientes(dataTicket, "Ticket #" + limpio);
-                } else {
-                    // 2. Si no hay ticket, intentamos por TRABAJADOR
-                    fetch('/api/prestamos_trabajador?worker_id=' + limpio)
-                    .then(r2 => r2.json())
-                    .then(dataWorker => {
-                        if(dataWorker.length > 0) {
-                            renderPendientes(dataWorker, "Trabajador " + limpio);
-                        } else {
-                            div.innerHTML = `<div style="text-align:center; padding:20px;">
-                                <h3 style="color:#e74c3c;">⛔ No encontrado</h3>
-                                <p>No hay préstamos activos para:<br><b>${limpio}</b></p>
-                            </div>`;
-                        }
-                    });
+            let q = document.getElementById('scan_ret').value.trim().replace('TICKET:','');
+            if(!q) return;
+            
+            // Determinar si es RUT o Ticket ID (Si tiene guión es RUT, si no Ticket)
+            let url = q.includes('-') ? `/api/prestamos_trabajador?worker_id=${q}` : `/api/prestamos_ticket?ticket_id=${q}`;
+            
+            fetch(url).then(r=>r.json()).then(data=>{
+                let div = document.getElementById('return_area');
+                if(data.length===0) {
+                    div.innerHTML = "<h3 style='text-align:center; color:#2ecc71; margin-top:50px;'>✅ No tiene pendientes</h3>";
+                    document.getElementById('btn_process_ret').style.display = 'none';
+                    return;
                 }
+                
+                // Generar tabla con Checkboxes y Cantidades Editables
+                let html = `<table><thead><tr><th>Devolver</th><th>Ítem</th><th>Cant.</th></tr></thead><tbody>`;
+                data.forEach(p => {
+                    html += `
+                    <tr style="background:${p.tipo==='INSUMO'?'#222':'#1a1a1a'}">
+                        <td style="text-align:center;">
+                            <input type="checkbox" class="check-big ret-check" data-id="${p.prestamo_id}" onchange="toggleRow(this)">
+                        </td>
+                        <td>
+                            <div style="font-weight:bold; color:#fff;">${p.nombre}</div>
+                            <small style="color:#888;">${p.tool_id}</small>
+                        </td>
+                        <td style="text-align:center;">
+                            <input type="number" class="qty-input" id="qty_${p.prestamo_id}" value="${p.cantidad}" max="${p.cantidad}" min="1" disabled>
+                            <br><small style="color:#555">de ${p.cantidad}</small>
+                        </td>
+                    </tr>`;
+                });
+                html += "</tbody></table>";
+                div.innerHTML = html;
+                document.getElementById('btn_process_ret').style.display = 'block';
             });
-
-            document.getElementById('scan_input').value = '';
-            document.getElementById('scan_input').focus();
+            document.getElementById('scan_ret').value = '';
         }
 
-        function renderPendientes(data, titulo) {
-            let div = document.getElementById('pending_container');
-            div.innerHTML = `<div style="background:#222; padding:5px; text-align:center; color:#2ecc71; font-weight:bold; border-bottom:1px solid #444;">RESULTADOS: ${titulo}</div>`;
+        function toggleRow(chk) {
+            let input = document.getElementById('qty_' + chk.getAttribute('data-id'));
+            input.disabled = !chk.checked;
+            if(chk.checked) input.focus();
+        }
 
-            data.forEach(p => {
-                let item = document.createElement('div');
-                item.className = 'pending-item';
-                item.innerHTML = `
-                    <div style="flex:1;">
-                        <div style="color:#fff; font-weight:bold;">${p.nombre}</div>
-                        <small style="color:#888;">CÓD: <b style="color:#e67e22;">${p.tool_id}</b> | Cant: ${p.cantidad}</small>
-                        <br>
-                        <small style="color:#555;">Salida: ${p.fecha_salida}</small>
-                    </div>
-                    <form action="/procesar_devolucion" method="POST">
-                        <input type="hidden" name="prestamo_id" value="${p.prestamo_id}">
-                        <button type="submit" class="btn-return-one">RECIBIR</button>
-                    </form>
-                `;
-                div.appendChild(item);
+        function procesarDevolucionMasiva() {
+            let checks = document.querySelectorAll('.ret-check:checked');
+            if(checks.length === 0) return alert("Seleccione al menos un ítem para recibir.");
+            
+            let items = [];
+            checks.forEach(c => {
+                let pid = c.getAttribute('data-id');
+                let q = document.getElementById('qty_'+pid).value;
+                items.push({ id: pid, cantidad: q });
+            });
+
+            fetch('/procesar_devolucion_compleja', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ items: items })
+            }).then(r=>r.json()).then(d=>{
+                if(d.status==='ok'){
+                    // ABRIR TICKET DEVOLUCIÓN
+                    window.open('/ticket_devolucion?ids='+d.ids, '_blank', 'width=400,height=600');
+                    // Limpiar pantalla
+                    document.getElementById('return_area').innerHTML = '<p style="text-align:center; color:#2ecc71;">Recepción Exitosa.</p>';
+                    document.getElementById('btn_process_ret').style.display = 'none';
+                } else {
+                    alert("Error: " + d.msg);
+                }
             });
         }
     </script>
