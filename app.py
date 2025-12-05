@@ -329,6 +329,32 @@ def importar_trabajadores():
         except Exception as e: flash(f'Error: {e}')
     return redirect(url_for('gestion_trabajadores'))
 
+# --- PEGAR ESTO EN LA SECCIÓN DE TRABAJADORES ---
+
+@app.route('/trabajadores/guardar', methods=['POST'])
+def guardar_trabajador():
+    if 'user' not in session: return redirect(url_for('login'))
+    
+    # 1. Capturar datos y limpiar RUT (quitar puntos si el usuario los puso)
+    try:
+        rut = request.form['rut'].strip().upper().replace('.', '') 
+        nombre = request.form['nombre'].strip()
+        correo = request.form['correo'].strip()
+        seccion = request.form['seccion'].strip()
+        faena = request.form['faena'].strip()
+
+        # 2. Guardar en Base de Datos (Borrar anterior si existe e insertar nuevo)
+        ejecutar_sql('DELETE FROM trabajadores WHERE rut=%s', (rut,))
+        ejecutar_sql('INSERT INTO trabajadores (rut, nombre, correo, seccion, faena) VALUES (%s, %s, %s, %s, %s)', 
+                     (rut, nombre, correo, seccion, faena))
+        
+        flash('✅ Trabajador guardado correctamente.')
+        
+    except Exception as e:
+        flash(f'❌ Error al guardar: {e}')
+        
+    return redirect(url_for('gestion_trabajadores'))
+
 # --- CONFIGURACIÓN ADMIN ---
 @app.route('/admin/config', methods=['GET', 'POST'])
 def admin_config():
