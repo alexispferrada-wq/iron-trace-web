@@ -523,6 +523,38 @@ def limpiar_db_trabajadores():
     except Exception as e:
         return f"Error: {e}"
 
+@app.route('/procesar_devolucion', methods=['POST'])
+def procesar_devolucion():
+    
+    # Opción A: Por ID de Préstamo (Desde botón amarillo de la lista)
+    if 'prestamo_id' in request.form:
+        p_id = request.form['prestamo_id']
+        prestamo = ejecutar_sql('SELECT * FROM prestamos WHERE id = %s', (p_id,), one=True)
+        
+        if prestamo and prestamo['estado'] == 'ACTIVO':
+            ejecutar_sql('UPDATE productos SET stock = stock + %s WHERE id = %s', (prestamo['cantidad'], prestamo['tool_id']))
+            ejecutar_sql('UPDATE prestamos SET estado = %s, fecha_regreso = %s WHERE id = %s', 
+                         ('DEVUELTO', datetime.now().strftime("%Y-%m-%d %H:%M:%S"), p_id))
+            flash(f'✅ Ítem devuelto correctamente.')
+    
+    # Opción B: Por código directo de herramienta (Input de abajo)
+    elif 'tool_id' in request.form:
+        # AQUI ESTA EL CAMBIO: .strip() para borrar espacios accidentales
+        tid = request.form['tool_id'].strip().upper()
+        
+        # Buscamos cualquier préstamo activo con ese código
+        p = ejecutar_sql('SELECT * FROM prestamos WHERE tool_id=%s AND estado=%s ORDER BY id DESC LIMIT 1', (tid, 'ACTIVO'), one=True)
+        
+        if p:
+            ejecutar_sql('UPDATE productos SET stock = stock + %s WHERE id = %s', (p['cantidad'], tid))
+            ejecutar_sql('UPDATE prestamos SET estado = %s, fecha_regreso = %s WHERE id = %s', 
+                         ('DEVUELTO', datetime.now().strftime("%Y-%m-%d %H:%M:%S"), p['id']))
+            flash(f'✅ {tid} devuelto y stock recuperado.')
+        else:
+            flash(f'⚠️ No se encontró préstamo activo para la herramienta "{tid}".')
+
+    return redirect(url_for('panel_operador'))
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
