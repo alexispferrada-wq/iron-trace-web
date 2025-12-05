@@ -146,47 +146,96 @@
             });
         }
 
-        // --- LOGICA DEVOLUCIÓN AVANZADA ---
+       // --- LÓGICA DEVOLUCIÓN ROBUSTA ---
         function buscarPendientes() {
-            let q = document.getElementById('scan_ret').value.trim().replace('TICKET:','');
-            if(!q) return;
+            let input = document.getElementById('scan_ret').value.trim().toUpperCase();
+            if(!input) return;
+
+            let div = document.getElementById('return_area');
+            div.innerHTML = '<p style="text-align:center; color:yellow; font-size:1.2em;">🔍 Buscando en Base de Datos...</p>';
             
-            // Determinar si es RUT o Ticket ID (Si tiene guión es RUT, si no Ticket)
-            let url = q.includes('-') ? `/api/prestamos_trabajador?worker_id=${q}` : `/api/prestamos_ticket?ticket_id=${q}`;
+            // Ocultar botón de confirmar mientras busca
+            document.getElementById('btn_process_ret').style.display = 'none';
+
+            // 1. Limpieza de input (Si escaneó un QR de ticket "TICKET:ABC")
+            let limpio = input.replace('TICKET:', '').trim();
             
-            fetch(url).then(r=>r.json()).then(data=>{
-                let div = document.getElementById('return_area');
-                if(data.length===0) {
-                    div.innerHTML = "<h3 style='text-align:center; color:#2ecc71; margin-top:50px;'>✅ No tiene pendientes</h3>";
-                    document.getElementById('btn_process_ret').style.display = 'none';
-                    return;
+            // 2. Decidir si buscar por RUT o TICKET
+            // Si tiene guión "-" asumimos RUT, si no, Ticket
+            let url = '';
+            let tipoBusqueda = '';
+            
+            if (limpio.includes('-') || limpio.length > 8) {
+                url = '/api/prestamos_trabajador?worker_id=' + limpio;
+                tipoBusqueda = 'RUT';
+            } else {
+                url = '/api/prestamos_ticket?ticket_id=' + limpio;
+                tipoBusqueda = 'TICKET';
+            }
+            
+            fetch(url)
+            .then(r => r.json())
+            .then(respuesta => {
+                if (respuesta.status === 'ok') {
+                    // ¡ÉXITO! Mostrar tabla
+                    renderPendientes(respuesta.data);
+                } else if (respuesta.status === 'empty') {
+                    // Trabajador existe pero no debe nada
+                    div.innerHTML = `
+                        <div style="background:#2ecc71; color:black; padding:20px; border-radius:5px; text-align:center;">
+                            <h3>✔ PAZ Y SALVO</h3>
+                            <p>${respuesta.msg}</p>
+                        </div>`;
+                } else {
+                    // ERROR (No existe RUT o Ticket)
+                    div.innerHTML = `
+                        <div style="background:#e74c3c; color:white; padding:20px; border-radius:5px; text-align:center;">
+                            <h3>❌ NO ENCONTRADO</h3>
+                            <p>${respuesta.msg}</p>
+                            <small>Intente escanear nuevamente o ingresar el código manual.</small>
+                        </div>`;
                 }
-                
-                // Generar tabla con Checkboxes y Cantidades Editables
-                let html = `<table><thead><tr><th>Devolver</th><th>Ítem</th><th>Cant.</th></tr></thead><tbody>`;
-                data.forEach(p => {
-                    html += `
-                    <tr style="background:${p.tipo==='INSUMO'?'#222':'#1a1a1a'}">
-                        <td style="text-align:center;">
-                            <input type="checkbox" class="check-big ret-check" data-id="${p.prestamo_id}" onchange="toggleRow(this)">
-                        </td>
-                        <td>
-                            <div style="font-weight:bold; color:#fff;">${p.nombre}</div>
-                            <small style="color:#888;">${p.tool_id}</small>
-                        </td>
-                        <td style="text-align:center;">
-                            <input type="number" class="qty-input" id="qty_${p.prestamo_id}" value="${p.cantidad}" max="${p.cantidad}" min="1" disabled>
-                            <br><small style="color:#555">de ${p.cantidad}</small>
-                        </td>
-                    </tr>`;
-                });
-                html += "</tbody></table>";
-                div.innerHTML = html;
-                document.getElementById('btn_process_ret').style.display = 'block';
+            })
+            .catch(err => {
+                div.innerHTML = `<p style="color:red; text-align:center;">Error de conexión: ${err}</p>`;
             });
+
             document.getElementById('scan_ret').value = '';
+            document.getElementById('scan_ret').focus();
         }
 
+        function renderPendientes(data) {
+            let div = document.getElementById('return_area');
+            
+            // Generar tabla con Checkboxes y Cantidades Editables
+            let html = `
+                <div style="background:#333; padding:10px; margin-bottom:10px; border-left:5px solid #e67e22;">
+                    Resultados encontrados: <b>${data.length}</b> ítems pendientes.
+                </div>
+                <table>
+                    <thead><tr><th style="width:50px;">Devolver</th><th>Ítem</th><th>Cant.</th></tr></thead>
+                    <tbody>`;
+            
+            data.forEach(p => {
+                html += `
+                <tr style="background:${p.tipo==='INSUMO'?'#222':'#1a1a1a'}">
+                    <td style="text-align:center;">
+                        <input type="checkbox" class="check-big ret-check" data-id="${p.prestamo_id}" onchange="toggleRow(this)">
+                    </td>
+                    <td>
+                        <div style="font-weight:bold; color:#fff;">${p.nombre}</div>
+                        <small style="color:#888;">ID: ${p.tool_id}</small>
+                    </td>
+                    <td style="text-align:center;">
+                        <input type="number" class="qty-input" id="qty_${p.prestamo_id}" value="${p.cantidad}" max="${p.cantidad}" min="1" disabled>
+                        <br><small style="color:#555">de ${p.cantidad}</small>
+                    </td>
+                </tr>`;
+            });
+            html += "</tbody></table>";
+            div.innerHTML = html;
+            document.getElementById('btn_process_ret').style.display = 'block';
+        }
         function toggleRow(chk) {
             let input = document.getElementById('qty_' + chk.getAttribute('data-id'));
             input.disabled = !chk.checked;
