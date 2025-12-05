@@ -4,61 +4,93 @@
     <meta charset="UTF-8">
     <title>Configuración - Iron Trace</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; padding: 40px; display: flex; justify-content: center; }
-        .card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); width: 600px; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; padding: 40px; }
+        .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; max-width: 1000px; margin: 0 auto; }
+        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         h1 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+        h3 { color: #34495e; margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         
-        .form-group { margin-bottom: 20px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
-        input[type="text"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 1em; box-sizing: border-box; }
+        input[type="text"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px; box-sizing: border-box; }
+        label { font-weight: bold; font-size: 0.9em; display: block; margin-bottom: 5px; color: #555; }
         
-        .btn-save { background: #3498db; color: white; border: none; padding: 15px 30px; font-size: 1.1em; border-radius: 4px; cursor: pointer; width: 100%; }
-        .btn-save:hover { background: #2980b9; }
+        button { background: #3498db; color: white; border: none; padding: 15px; width: 100%; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #2980b9; }
         
-        .back-link { display: block; text-align: center; margin-top: 20px; color: #7f8c8d; text-decoration: none; }
-        
-        .flash { background: #d4edda; color: #155724; padding: 15px; border-radius: 4px; margin-bottom: 20px; text-align: center; }
+        /* ESTILOS SERVIDOR */
+        .server-table { width: 100%; border-collapse: collapse; font-size: 0.85em; font-family: monospace; }
+        .server-table td { padding: 8px; border-bottom: 1px solid #eee; }
+        .server-table tr:last-child td { border-bottom: none; }
+        .label-server { color: #888; }
+        .val-server { color: #333; font-weight: bold; text-align: right; }
+        .indicator { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; display: inline-block; margin-right: 5px; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h1>⚙️ Configuración Global</h1>
-        
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                {% for msg in messages %}
-                    <div class="flash">{{ msg }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+    <a href="/dashboard" style="text-decoration:none; color:#777; display:block; max-width:1000px; margin:0 auto 10px auto;">⬅ Volver al Dashboard</a>
 
-        <form method="POST">
-            <div class="form-group">
-                <label>Nombre Empresa (Cabecera Ticket)</label>
-                <input type="text" name="empresa_nombre" value="{{ config['empresa_nombre'] }}" required>
-            </div>
+    <div class="grid">
+        <div class="card">
+            <h1>⚙️ Configuración Global</h1>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}<div style="background:#d4edda; color:#155724; padding:10px; border-radius:4px; margin-bottom:20px;">{{ messages[0] }}</div>{% endif %}
+            {% endwith %}
 
-            <div class="form-group">
-                <label>Texto Pie de Página (Footer Ticket)</label>
-                <input type="text" name="ticket_footer" value="{{ config['ticket_footer'] }}" required>
-            </div>
+            <form method="POST">
+                <label>Nombre Empresa</label>
+                <input type="text" name="empresa_nombre" value="{{ config['empresa_nombre'] }}">
 
-            <div class="form-group">
-                <label>Nombre Impresora (Sistema)</label>
+                <label>Dirección Faena</label>
+                <input type="text" name="empresa_direccion" value="{{ config['empresa_direccion'] }}">
+
+                <label>Texto Pie de Ticket</label>
+                <input type="text" name="ticket_footer" value="{{ config['ticket_footer'] }}">
+
+                <label>ID Impresora (Red/Local)</label>
                 <input type="text" name="impresora_nombre" value="{{ config['impresora_nombre'] }}">
-                <small style="color:#888;">Nombre del dispositivo en Windows/Mac (Ej: POS-80)</small>
-            </div>
+
+                <button type="submit">GUARDAR CAMBIOS</button>
+            </form>
+        </div>
+
+        <div class="card" style="background: #2c3e50; color: white;">
+            <h3 style="color:white; border-color:#444;">📡 Estado del Servidor</h3>
             
-            <div class="form-group">
-                <label>Ruta Base de Datos (Solo lectura)</label>
-                <input type="text" value="{{ config['db_path'] }}" disabled style="background:#eee; color:#888;">
+            <div style="text-align:center; padding:20px 0;">
+                <span class="indicator"></span> SISTEMA ONLINE
             </div>
 
-            <button type="submit" class="btn-save">GUARDAR CAMBIOS</button>
-        </form>
-        
-        <a href="/dashboard" class="back-link">⬅ Volver al Dashboard</a>
+            <table class="server-table" style="color:#ddd;">
+                <tr>
+                    <td class="label-server">Hora Servidor</td>
+                    <td class="val-server" style="color:#e67e22;">{{ server.time_server }}</td>
+                </tr>
+                <tr>
+                    <td class="label-server">Zona Horaria</td>
+                    <td class="val-server">{{ server.timezone }}</td>
+                </tr>
+                <tr>
+                    <td class="label-server">Base de Datos</td>
+                    <td class="val-server">{{ server.db_mode }}</td>
+                </tr>
+                <tr>
+                    <td class="label-server">Sistema OS</td>
+                    <td class="val-server">{{ server.os }}</td>
+                </tr>
+                <tr>
+                    <td class="label-server">Nodo</td>
+                    <td class="val-server">{{ server.node }}</td>
+                </tr>
+                <tr>
+                    <td class="label-server">Runtime</td>
+                    <td class="val-server">Python {{ server.python }}</td>
+                </tr>
+            </table>
+            
+            <div style="margin-top:20px; font-size:0.7em; color:#777; word-break: break-all;">
+                PATH: {{ server.app_path }}
+            </div>
+        </div>
     </div>
 
 </body>
