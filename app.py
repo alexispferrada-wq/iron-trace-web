@@ -487,6 +487,16 @@ def reportes():
                            items_insumos=items_insumos,
                            search_term=search_term)
 
+# --- LIMPIEZA DE TRABAJADORES ---
+@app.route('/limpiar_trabajadores')
+def limpiar_db_trabajadores():
+    if session.get('rol') != 'admin': return "Acceso Denegado"
+    try:
+        ejecutar_sql("DELETE FROM trabajadores")
+        return "<h1>✅ Base de Trabajadores Vaciada. Ahora sube el CSV nuevo.</h1><a href='/trabajadores'>Ir a Cargar</a>"
+    except Exception as e:
+        return f"Error: {e}"
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
