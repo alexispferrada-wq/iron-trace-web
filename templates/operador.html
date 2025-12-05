@@ -57,7 +57,7 @@
         <label>ITEM A AGREGAR</label>
         <div class="form-row">
             <div style="flex: 3;">
-                <input type="text" id="tool_search" placeholder="Escanear o Buscar..." onkeyup="buscar(this.value)">
+                <input type="text" id="tool_search" placeholder="Escriba 1 letra para buscar..." onkeyup="buscar(this.value)">
                 <div id="sugg" class="suggestions"></div>
             </div>
             <div style="flex: 1;">
@@ -115,7 +115,9 @@
         let currentItem = null;
 
         function buscar(q) {
-            if(q.length<2){ document.getElementById('sugg').style.display='none'; return; }
+            // CORRECCIÓN: BUSCAR DESDE 1 LETRA
+            if(q.length < 1){ document.getElementById('sugg').style.display='none'; return; }
+            
             fetch('/api/buscar_herramientas?q='+q).then(r=>r.json()).then(data=>{
                 let box = document.getElementById('sugg'); box.innerHTML='';
                 if(data.length>0){
@@ -169,14 +171,11 @@
             let input = document.getElementById('scan_input').value.trim();
             if(!input) return;
             
-            // Detectar si es un QR de Ticket (Formato TICKET:XXXX)
             let apiUrl = '';
-            
             if(input.startsWith("TICKET:")) {
                 let ticketId = input.split(":")[1];
                 apiUrl = '/api/prestamos_ticket?ticket_id=' + ticketId;
             } else {
-                // Asumimos que es RUT
                 apiUrl = '/api/prestamos_trabajador?worker_id=' + input;
             }
             
@@ -207,8 +206,6 @@
                     div.appendChild(item);
                 });
             });
-            
-            // Limpiar input para siguiente escaneo
             document.getElementById('scan_input').value = '';
             document.getElementById('scan_input').focus();
         }
