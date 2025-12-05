@@ -3,240 +3,289 @@
 <head>
     <meta charset="UTF-8">
     <title>Terminal Operador - Iron Trace</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #111; color: #eee; margin: 0; display: flex; height: 100vh; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #111; color: #eee; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         
-        /* LAYOUT 50/50 */
+        /* --- ESTRUCTURA 50/50 --- */
         .col-salida { width: 50%; padding: 20px; border-right: 2px solid #333; display: flex; flex-direction: column; background: #1a1a1a; }
         .col-devolucion { width: 50%; padding: 20px; background: #000; display: flex; flex-direction: column; }
 
-        h2 { margin-top: 0; border-bottom: 2px solid #444; padding-bottom: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 2px; }
+        h2 { margin-top: 0; border-bottom: 2px solid #444; padding-bottom: 15px; color: #aaa; text-transform: uppercase; letter-spacing: 2px; font-size: 1.2em; }
         
-        /* INPUTS */
-        input { padding: 12px; font-size: 1.1em; background: #222; color: white; border: 1px solid #555; text-align: center; width: 100%; box-sizing: border-box; margin-bottom: 10px; }
-        input:focus { outline: 2px solid #3498db; background: #333; }
+        /* --- INPUTS --- */
+        input { padding: 15px; font-size: 1.2em; background: #222; color: white; border: 1px solid #555; text-align: center; width: 100%; box-sizing: border-box; margin-bottom: 15px; border-radius: 4px; }
+        input:focus { outline: 2px solid #3498db; background: #333; border-color: #3498db; }
         
-        /* TABLAS Y LISTAS */
-        .table-scroll { flex: 1; overflow-y: auto; border: 1px solid #333; margin: 10px 0; background: #111; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
-        th { text-align: left; background: #222; padding: 10px; position: sticky; top: 0; color: #888; }
+        /* --- TABLAS --- */
+        .table-scroll { flex: 1; overflow-y: auto; border: 1px solid #333; margin: 10px 0; background: #151515; border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.95em; }
+        th { text-align: left; background: #2c3e50; padding: 12px; position: sticky; top: 0; color: #ecf0f1; z-index: 10; }
         td { padding: 10px; border-bottom: 1px solid #333; vertical-align: middle; }
+        tr:hover { background-color: #222; }
         
-        /* SUGERENCIAS DE BUSQUEDA */
-        .suggestions { background: #2c3e50; position: absolute; width: 60%; max-height: 250px; overflow-y: auto; display: none; border: 1px solid #34495e; z-index: 100; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
-        .sugg-item { padding: 12px; cursor: pointer; border-bottom: 1px solid #34495e; }
+        /* --- AUTOCOMPLETADO --- */
+        .suggestions { background: #2c3e50; position: absolute; width: 65%; max-height: 300px; overflow-y: auto; display: none; border: 1px solid #34495e; z-index: 100; box-shadow: 0 10px 20px rgba(0,0,0,0.5); top: 55px; left: 0; }
+        .sugg-item { padding: 15px; cursor: pointer; border-bottom: 1px solid #34495e; display: flex; justify-content: space-between; }
         .sugg-item:hover { background: #3498db; color: white; }
         
-        /* BOTONES */
-        button { cursor: pointer; border: none; padding: 10px; font-weight: bold; border-radius: 4px; transition: 0.2s; }
-        .btn-add { background: #3498db; color: white; width: 15%; font-size: 1.2em; }
-        .btn-finish { background: #27ae60; color: white; padding: 15px; font-size: 1.2em; width: 100%; margin-top: auto; }
-        .btn-confirm-ret { background: #e67e22; color: white; padding: 15px; font-size: 1.2em; width: 100%; margin-top: auto; display: none; }
+        /* --- BOTONES --- */
+        button { cursor: pointer; border: none; padding: 10px; font-weight: bold; border-radius: 4px; transition: 0.2s; text-transform: uppercase; }
+        .btn-add { background: #3498db; color: white; width: 20%; font-size: 1.5em; height: 54px; }
+        .btn-finish { background: #27ae60; color: white; padding: 20px; font-size: 1.2em; width: 100%; margin-top: auto; }
+        .btn-process-ret { background: #e67e22; color: white; padding: 20px; font-size: 1.2em; width: 100%; margin-top: auto; display: none; }
+        .btn-search { background: #e67e22; color: white; width: 25%; font-size: 1em; }
         
-        /* CHECKBOX CUSTOM */
-        .check-big { transform: scale(1.5); cursor: pointer; accent-color: #e67e22; }
-        .qty-input { width: 60px; padding: 5px; font-size: 1em; text-align: center; margin: 0; display: inline-block; background: #333; border: 1px solid #555; }
-        
-        .badge { padding: 3px 8px; border-radius: 4px; font-size: 0.8em; }
+        /* --- ELEMENTOS DEVOLUCIÓN --- */
+        .check-big { transform: scale(1.8); cursor: pointer; accent-color: #e67e22; margin: 10px; }
+        .qty-input { width: 70px; padding: 8px; font-size: 1.1em; text-align: center; margin: 0; display: inline-block; background: #333; border: 1px solid #555; color: white; }
+        .qty-input:disabled { background: #222; color: #555; border-color: #333; }
+
+        /* --- UTILIDADES --- */
+        .badge { padding: 3px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; }
         .badge-tool { background: #3498db; color: white; }
         .badge-insumo { background: #f1c40f; color: black; }
+        .text-green { color: #2ecc71; }
+        .text-red { color: #e74c3c; }
+        .text-muted { color: #7f8c8d; font-size: 0.8em; }
     </style>
 </head>
 <body>
 
     <div class="col-salida">
-        <h2 style="color:#3498db;">📤 Nuevo Préstamo</h2>
+        <h2 style="color:#3498db;">📤 Salida / Préstamo</h2>
         
-        <input type="text" id="worker_out" placeholder="1. Escanear RUT Trabajador" autofocus>
+        <input type="text" id="worker_out" placeholder="1. Escanear RUT Trabajador" autofocus onkeydown="if(event.key==='Enter') document.getElementById('tool_search').focus()">
         
-        <div style="display: flex; gap: 10px; position: relative;">
-            <input type="text" id="tool_search" placeholder="2. Buscar Herramienta..." onkeyup="buscar(this.value)" autocomplete="off" style="flex: 3;">
-            <input type="number" id="tool_qty" value="1" min="1" style="flex: 1;">
+        <div style="display: flex; gap: 10px; position: relative; margin-bottom: 10px;">
+            <input type="text" id="tool_search" placeholder="2. Buscar ítem..." onkeyup="buscar(this.value)" autocomplete="off" style="flex: 3; margin-bottom:0;">
+            <input type="number" id="tool_qty" value="1" min="1" style="flex: 1; margin-bottom:0;">
             <button class="btn-add" onclick="agregar()">+</button>
+            
             <div id="sugg" class="suggestions"></div>
         </div>
 
         <div class="table-scroll">
             <table id="cart_table">
-                <thead><tr><th>Ítem</th><th>Cant.</th><th>X</th></tr></thead>
+                <thead><tr><th>Descripción</th><th>Tipo</th><th>Cant.</th><th style="width:40px;">X</th></tr></thead>
                 <tbody></tbody>
             </table>
         </div>
         
-        <button class="btn-finish" onclick="finalizarSalida()">CONFIRMAR SALIDA & IMPRIMIR</button>
+        <button class="btn-finish" onclick="finalizarSalida()">CONFIRMAR SALIDA</button>
     </div>
 
     <div class="col-devolucion">
         <h2 style="color:#e67e22;">📥 Recepción / Devolución</h2>
         
-        <div style="display:flex; gap:10px;">
-            <input type="text" id="scan_ret" placeholder="Escanear RUT o Ticket..." onchange="buscarPendientes()">
-            <button onclick="buscarPendientes()" style="background:#e67e22; color:white; width:25%;">BUSCAR</button>
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <input type="text" id="scan_ret" placeholder="Escanear RUT o Ticket..." onchange="buscarPendientes()" style="margin-bottom:0;">
+            <button class="btn-search" onclick="buscarPendientes()">BUSCAR</button>
         </div>
 
         <div class="table-scroll" id="return_area">
-            <p style="text-align:center; color:#666; margin-top:50px;">
-                Ingrese el RUT del trabajador para ver qué debe.
-            </p>
+            <div style="text-align:center; color:#555; margin-top:100px;">
+                <span style="font-size:3em; display:block; margin-bottom:10px;">🔍</span>
+                Escanee el RUT del trabajador<br>para ver sus herramientas pendientes.
+            </div>
         </div>
 
-        <button id="btn_process_ret" class="btn-confirm-ret" onclick="procesarDevolucionMasiva()">
-            CONFIRMAR RECEPCIÓN SELECCIONADA
+        <button id="btn_process_ret" class="btn-process-ret" onclick="procesarDevolucionMasiva()">
+            CONFIRMAR RECEPCIÓN
         </button>
         
-        <div style="text-align:center; margin-top:10px;">
-            <a href="/logout" style="color:#ff4444; text-decoration:none;">[CERRAR SESIÓN]</a>
+        <div style="text-align:center; margin-top:15px;">
+            <a href="/logout" style="color:#e74c3c; text-decoration:none; font-weight:bold;">[ CERRAR SESIÓN ]</a>
         </div>
     </div>
 
     <script>
-        // --- LOGICA SALIDA ---
+        // ======================= LÓGICA SALIDA =======================
         let carrito = [];
         let currentItem = null;
 
         function buscar(q) {
+            // Busca desde la primera letra
             if(q.length < 1){ document.getElementById('sugg').style.display='none'; return; }
-            fetch('/api/buscar_herramientas?q='+q).then(r=>r.json()).then(data=>{
-                let box = document.getElementById('sugg'); box.innerHTML='';
-                if(data.length>0){
+            
+            fetch('/api/buscar_herramientas?q='+q)
+            .then(r=>r.json())
+            .then(data=>{
+                let box = document.getElementById('sugg'); 
+                box.innerHTML='';
+                
+                if(data.length > 0){
                     box.style.display='block';
                     data.forEach(i=>{
-                        let d = document.createElement('div'); d.className='sugg-item';
-                        let color = i.stock > 0 ? '#2ecc71':'#e74c3c';
-                        d.innerHTML = `<b>${i.nombre}</b> <span style='float:right; color:${color}'>Stock: ${i.stock}</span>`;
+                        let d = document.createElement('div'); 
+                        d.className='sugg-item';
+                        let stockClass = i.stock > 0 ? 'text-green' : 'text-red';
+                        
+                        d.innerHTML = `
+                            <div>
+                                <div style="font-weight:bold;">${i.nombre}</div>
+                                <div class="text-muted">ID: ${i.id} | ${i.tipo}</div>
+                            </div>
+                            <div class="${stockClass}" style="font-weight:bold;">Stock: ${i.stock}</div>
+                        `;
+                        
                         d.onclick=()=>{ 
-                            currentItem=i; document.getElementById('tool_search').value=i.nombre;
+                            currentItem=i; 
+                            document.getElementById('tool_search').value=i.nombre;
                             box.style.display='none'; 
+                            // Si es insumo, enfocar cantidad
                             if(i.tipo==='INSUMO') document.getElementById('tool_qty').select();
                             else document.getElementById('tool_qty').focus();
-                        }; box.appendChild(d);
+                        }; 
+                        box.appendChild(d);
                     });
-                } else box.style.display='none';
+                } else {
+                    box.style.display='none';
+                }
             });
         }
 
         function agregar() {
-            if(!currentItem) return alert("Seleccione ítem");
+            if(!currentItem) return alert("⚠️ Seleccione un ítem del listado.");
             let qty = parseInt(document.getElementById('tool_qty').value);
-            if(qty > currentItem.stock) return alert("Stock insuficiente");
+            
+            if(qty > currentItem.stock) return alert("❌ Stock insuficiente. Disponible: " + currentItem.stock);
+            
             carrito.push({...currentItem, cantidad: qty});
             renderCart();
-            currentItem=null; document.getElementById('tool_search').value=''; document.getElementById('tool_qty').value='1';
+            
+            // Reset para siguiente item
+            currentItem=null; 
+            document.getElementById('tool_search').value=''; 
+            document.getElementById('tool_qty').value='1';
             document.getElementById('tool_search').focus();
         }
 
         function renderCart() {
-            let tbody = document.querySelector('#cart_table tbody'); tbody.innerHTML='';
+            let tbody = document.querySelector('#cart_table tbody'); 
+            tbody.innerHTML='';
+            
             carrito.forEach((it,i)=>{
-                tbody.innerHTML += `<tr><td>${it.nombre}</td><td style='text-align:center'>${it.cantidad}</td><td style='color:#e74c3c; cursor:pointer' onclick='carrito.splice(${i},1);renderCart()'>✖</td></tr>`;
+                let badge = it.tipo==='HERRAMIENTA' ? 'badge-tool' : 'badge-insumo';
+                tbody.innerHTML += `
+                <tr>
+                    <td>${it.nombre}</td>
+                    <td><span class="badge ${badge}">${it.tipo[0]}</span></td>
+                    <td style='text-align:center; font-weight:bold;'>${it.cantidad}</td>
+                    <td style='text-align:center;'>
+                        <b style='color:#e74c3c; cursor:pointer; font-size:1.2em;' onclick='carrito.splice(${i},1);renderCart()'>×</b>
+                    </td>
+                </tr>`;
             });
         }
 
         function finalizarSalida() {
             let w = document.getElementById('worker_out').value.trim();
-            if(!w || carrito.length===0) return alert("Faltan datos");
+            if(!w) return alert("⚠️ Falta escanear el Trabajador");
+            if(carrito.length===0) return alert("⚠️ El carro está vacío");
+            
             fetch('/procesar_salida_masiva', {
                 method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({worker_id: w, items: carrito})
             }).then(r=>r.json()).then(d=>{
                 if(d.status==='ok'){
+                    // Imprimir Ticket
                     window.open('/ticket/'+d.ticket_id, '_blank', 'width=400,height=600');
-                    carrito=[]; renderCart(); document.getElementById('worker_out').value='';
-                } else alert(d.msg);
+                    // Limpiar todo
+                    carrito=[]; renderCart(); 
+                    document.getElementById('worker_out').value='';
+                    document.getElementById('worker_out').focus();
+                } else {
+                    alert("ERROR: " + d.msg);
+                }
             });
         }
 
-       // --- LÓGICA DEVOLUCIÓN ROBUSTA ---
+        // ======================= LÓGICA DEVOLUCIÓN =======================
+        
         function buscarPendientes() {
             let input = document.getElementById('scan_ret').value.trim().toUpperCase();
             if(!input) return;
 
             let div = document.getElementById('return_area');
-            div.innerHTML = '<p style="text-align:center; color:yellow; font-size:1.2em;">🔍 Buscando en Base de Datos...</p>';
-            
-            // Ocultar botón de confirmar mientras busca
+            div.innerHTML = '<p style="text-align:center; color:#f1c40f; margin-top:50px;">⏳ Buscando datos...</p>';
             document.getElementById('btn_process_ret').style.display = 'none';
 
-            // 1. Limpieza de input (Si escaneó un QR de ticket "TICKET:ABC")
-            let limpio = input.replace('TICKET:', '').trim();
+            // 1. Limpieza de RUT (Quitar puntos y espacios)
+            // Ejemplo: "11.111.111-1" -> "11111111-1"
+            let limpio = input.replace(/\./g, '').replace('TICKET:', '').trim();
             
-            // 2. Decidir si buscar por RUT o TICKET
-            // Si tiene guión "-" asumimos RUT, si no, Ticket
+            // 2. Determinar si es RUT o Ticket (Si tiene guión o es largo, probamos trabajador)
             let url = '';
-            let tipoBusqueda = '';
-            
             if (limpio.includes('-') || limpio.length > 8) {
-                url = '/api/prestamos_trabajador?worker_id=' + limpio;
-                tipoBusqueda = 'RUT';
+                url = `/api/prestamos_trabajador?worker_id=${limpio}`;
             } else {
-                url = '/api/prestamos_ticket?ticket_id=' + limpio;
-                tipoBusqueda = 'TICKET';
+                url = `/api/prestamos_ticket?ticket_id=${limpio}`;
             }
             
             fetch(url)
             .then(r => r.json())
-            .then(respuesta => {
-                if (respuesta.status === 'ok') {
-                    // ¡ÉXITO! Mostrar tabla
-                    renderPendientes(respuesta.data);
-                } else if (respuesta.status === 'empty') {
-                    // Trabajador existe pero no debe nada
+            .then(data => {
+                if (data.status === 'ok') {
+                    renderPendientes(data.data);
+                } else if (data.status === 'empty') {
                     div.innerHTML = `
-                        <div style="background:#2ecc71; color:black; padding:20px; border-radius:5px; text-align:center;">
-                            <h3>✔ PAZ Y SALVO</h3>
-                            <p>${respuesta.msg}</p>
+                        <div style="text-align:center; margin-top:50px;">
+                            <h3 style="color:#2ecc71;">✔ PAZ Y SALVO</h3>
+                            <p>${data.msg}</p>
                         </div>`;
                 } else {
-                    // ERROR (No existe RUT o Ticket)
                     div.innerHTML = `
-                        <div style="background:#e74c3c; color:white; padding:20px; border-radius:5px; text-align:center;">
-                            <h3>❌ NO ENCONTRADO</h3>
-                            <p>${respuesta.msg}</p>
-                            <small>Intente escanear nuevamente o ingresar el código manual.</small>
+                        <div style="text-align:center; margin-top:50px;">
+                            <h3 style="color:#e74c3c;">❌ NO ENCONTRADO</h3>
+                            <p>${data.msg}</p>
                         </div>`;
                 }
             })
             .catch(err => {
-                div.innerHTML = `<p style="color:red; text-align:center;">Error de conexión: ${err}</p>`;
+                div.innerHTML = `<p style="color:red; text-align:center;">Error de red: ${err}</p>`;
             });
 
             document.getElementById('scan_ret').value = '';
             document.getElementById('scan_ret').focus();
         }
 
-        function renderPendientes(data) {
+        function renderPendientes(items) {
             let div = document.getElementById('return_area');
             
-            // Generar tabla con Checkboxes y Cantidades Editables
             let html = `
-                <div style="background:#333; padding:10px; margin-bottom:10px; border-left:5px solid #e67e22;">
-                    Resultados encontrados: <b>${data.length}</b> ítems pendientes.
+                <div style="background:#34495e; padding:10px; text-align:center; border-bottom:1px solid #444; margin-bottom:10px;">
+                    Pendientes: <b style="color:#e67e22">${items.length}</b>
                 </div>
                 <table>
-                    <thead><tr><th style="width:50px;">Devolver</th><th>Ítem</th><th>Cant.</th></tr></thead>
+                    <thead><tr><th style="width:50px">Recibir</th><th>Herramienta</th><th>Cant.</th></tr></thead>
                     <tbody>`;
             
-            data.forEach(p => {
+            items.forEach(p => {
                 html += `
-                <tr style="background:${p.tipo==='INSUMO'?'#222':'#1a1a1a'}">
+                <tr>
                     <td style="text-align:center;">
-                        <input type="checkbox" class="check-big ret-check" data-id="${p.prestamo_id}" onchange="toggleRow(this)">
+                        <input type="checkbox" class="check-big ret-check" data-id="${p.prestamo_id}" onchange="toggleQty(this)">
                     </td>
                     <td>
                         <div style="font-weight:bold; color:#fff;">${p.nombre}</div>
-                        <small style="color:#888;">ID: ${p.tool_id}</small>
+                        <div class="text-muted">Cód: ${p.tool_id}</div>
+                        <div class="text-muted">Salida: ${p.fecha_salida}</div>
                     </td>
                     <td style="text-align:center;">
-                        <input type="number" class="qty-input" id="qty_${p.prestamo_id}" value="${p.cantidad}" max="${p.cantidad}" min="1" disabled>
-                        <br><small style="color:#555">de ${p.cantidad}</small>
+                        <input type="number" class="qty-input" id="qty_${p.prestamo_id}" 
+                               value="${p.cantidad}" max="${p.cantidad}" min="1" disabled>
+                        <div class="text-muted">de ${p.cantidad}</div>
                     </td>
                 </tr>`;
             });
-            html += "</tbody></table>";
+            
+            html += `</tbody></table>`;
             div.innerHTML = html;
             document.getElementById('btn_process_ret').style.display = 'block';
         }
-        function toggleRow(chk) {
+
+        function toggleQty(chk) {
             let input = document.getElementById('qty_' + chk.getAttribute('data-id'));
             input.disabled = !chk.checked;
             if(chk.checked) input.focus();
@@ -244,7 +293,7 @@
 
         function procesarDevolucionMasiva() {
             let checks = document.querySelectorAll('.ret-check:checked');
-            if(checks.length === 0) return alert("Seleccione al menos un ítem para recibir.");
+            if(checks.length === 0) return alert("⚠️ Marque las casillas de lo que está recibiendo.");
             
             let items = [];
             checks.forEach(c => {
@@ -258,10 +307,11 @@
                 body: JSON.stringify({ items: items })
             }).then(r=>r.json()).then(d=>{
                 if(d.status==='ok'){
-                    // ABRIR TICKET DEVOLUCIÓN
+                    // 1. Abrir comprobante
                     window.open('/ticket_devolucion?ids='+d.ids, '_blank', 'width=400,height=600');
-                    // Limpiar pantalla
-                    document.getElementById('return_area').innerHTML = '<p style="text-align:center; color:#2ecc71;">Recepción Exitosa.</p>';
+                    // 2. Limpiar pantalla
+                    document.getElementById('return_area').innerHTML = 
+                        '<div style="text-align:center; margin-top:50px;"><h2 style="color:#2ecc71;">✅ Recepción Exitosa</h2><p>Stock actualizado.</p></div>';
                     document.getElementById('btn_process_ret').style.display = 'none';
                 } else {
                     alert("Error: " + d.msg);
