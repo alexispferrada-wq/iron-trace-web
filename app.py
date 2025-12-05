@@ -84,25 +84,40 @@ def dashboard():
     if session.get('rol') == 'operador': return redirect(url_for('panel_operador'))
     if 'user' not in session: return redirect(url_for('login'))
     
-    stats = {'insumos_hoy':0, 'prestamos_valor':0, 'prestamos_qty':0}
+    # Inicializar variables
+    stats = {'insumos_hoy': 0, 'prestamos_valor': 0, 'prestamos_activos_qty': 0}
     en_uso = []
+    total_items = 0  # Variable nueva
     
     try:
+        # KPIs Financieros
         hoy = datetime.now().strftime("%Y-%m-%d")
-        # Gastos
-        res = ejecutar_sql("SELECT SUM(p.cantidad * prod.precio) as t FROM prestamos p JOIN productos prod ON p.tool_id=prod.id WHERE p.tipo_item='INSUMO' AND p.fecha_salida LIKE %s", (f'{hoy}%',), one=True)
-        stats['insumos_hoy'] = res['t'] if res and res['t'] else 0
+        res = ejecutar_sql("SELECT SUM(p.cantidad * prod.precio) as total FROM prestamos p JOIN productos prod ON p.tool_id = prod.id WHERE p.tipo_item = 'INSUMO' AND p.fecha_salida LIKE %s", (f'{hoy}%',), one=True)
+        stats['insumos_hoy'] = res['total'] if res and res.get('total') else 0
         
-        # Activos
-        res2 = ejecutar_sql("SELECT SUM(prod.precio) as t, COUNT(*) as c FROM prestamos p JOIN productos prod ON p.tool_id=prod.id WHERE p.estado='ACTIVO'", one=True)
-        if res2: stats['prestamos_valor'] = res2['t'] or 0; stats['prestamos_qty'] = res2['c']
+        res2 = ejecutar_sql("SELECT SUM(prod.precio) as total, COUNT(*) as qty FROM prestamos p JOIN productos prod ON p.tool_id = prod.id WHERE p.estado = 'ACTIVO'", one=True)
+        if res2:
+            stats['prestamos_valor'] = res2['total'] if res2.get('total') else 0
+            stats['prestamos_activos_qty'] = res2['qty']
+
+        # Tabla En Uso (Si quieres mostrarla, si no, puedes quitarla del HTML)
+        en_uso = ejecutar_sql("SELECT p.*, prod.nombre FROM prestamos p JOIN productos prod ON p.tool_id = prod.id WHERE p.estado = 'ACTIVO' ORDER BY p.fecha_salida DESC")
         
-        # Tabla solo herramientas activas
-        en_uso = ejecutar_sql("SELECT p.*, prod.nombre FROM prestamos p JOIN productos prod ON p.tool_id=prod.id WHERE p.estado='ACTIVO' ORDER BY p.fecha_salida DESC")
-    except: pass
+        # Conteo Total Inventario (PARA EL BOTÓN 4)
+        res_count = ejecutar_sql("SELECT COUNT(*) as c FROM productos", one=True)
+        total_items = res_count['c'] if res_count else 0
 
-    return render_template('dashboard.html', stats=stats, en_uso=en_uso, rol=session['rol'], db_status=True, db_path="Cloud Postgres" if DATABASE_URL else "Local SQLite")
+    except Exception as e:
+        print(f"Error dashboard: {e}")
 
+    conn_type = "PostgreSQL" if DATABASE_URL else "SQLite"
+
+    return render_template('dashboard.html', 
+                           stats=stats, 
+                           en_uso=en_uso, 
+                           rol=session['rol'], 
+                           total_items=total_items,  # <--- Enviamos el dato
+                           db_path=conn_type)
 # --- APIS (CON FILTRO DE HERRAMIENTAS) ---
 @app.route('/api/buscar_herramientas')
 def api_buscar():
