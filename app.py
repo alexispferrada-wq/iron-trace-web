@@ -572,6 +572,30 @@ def fix_security():
         """
     except Exception as e:
         return f"<h1 style='color:red'>ERROR: {str(e)}</h1>"
+
+# --- RUTA DE EMERGENCIA (RESET ADMIN) ---
+@app.route('/reset_admin_force')
+def reset_force():
+    try:
+        # 1. Borramos al admin si existe para recrearlo limpio
+        ejecutar_sql("DELETE FROM usuarios WHERE username = 'admin'")
+        
+        # 2. Lo creamos de nuevo con clave '1234' (TEXTO PLANO, SIN ENCRIPTAR)
+        # Esto asegura que entre por la lógica "Legacy" del login
+        ejecutar_sql("INSERT INTO usuarios (username, password, rol) VALUES ('admin', '1234', 'admin')")
+        
+        return """
+        <div style='text-align:center; font-family:sans-serif; margin-top:50px;'>
+            <h1 style='color:green;'>✅ ACCESO RESTAURADO</h1>
+            <p>El usuario <b>admin</b> ha sido reiniciado.</p>
+            <hr>
+            <h3>Nueva Clave Temporal: 1234</h3>
+            <br>
+            <a href='/login' style='background:#333; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;'>IR AL LOGIN >></a>
+        </div>
+        """
+    except Exception as e:
+        return f"<h1>Error: {e}</h1>"
         
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
