@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import uuid
 import csv
@@ -198,10 +199,32 @@ def guardar_usuario():
     password = request.form['password']
     rol_nuevo = request.form['rol']
     
+    # Validación de Supervisor
     if session['rol'] == 'supervisor' and rol_nuevo != 'operador':
         flash('⛔ Error: Supervisor solo puede crear Operadores.')
         return redirect(url_for('gestion_usuarios'))
 
+    try:
+        # Generar HASH seguro si hay contraseña
+        pass_hash = generate_password_hash(password) if password else None
+
+        existe = ejecutar_sql('SELECT * FROM usuarios WHERE username = %s', (username,), one=True)
+        if existe:
+            if password:
+                # Actualizamos con el HASH, no el texto plano
+                ejecutar_sql('UPDATE usuarios SET password = %s WHERE username = %s', (pass_hash, username))
+            flash(f'✅ Usuario {username} actualizado.')
+        else:
+            if not password:
+                flash('❌ Error: Contraseña requerida para nuevos usuarios.')
+            else:
+                # Guardamos usuario, HASH y rol
+                ejecutar_sql('INSERT INTO usuarios VALUES (%s, %s, %s)', (username, pass_hash, rol_nuevo))
+                flash(f'✅ Usuario {username} creado.')
+    except Exception as e:
+        flash(f'❌ Error: {str(e)}')
+        
+    return redirect(url_for('gestion_usuarios'))
     try:
         existe = ejecutar_sql('SELECT * FROM usuarios WHERE username = %s', (username,), one=True)
         if existe:
