@@ -385,11 +385,58 @@ def admin_config():
 @app.route('/operador')
 def panel_operador(): return render_template('operador.html')
 
+# --- APIs MEJORADAS (BÚSQUEDA TOLERANTE) ---
+
 @app.route('/api/buscar_herramientas')
 def api_buscar():
-    q = request.args.get('q', '').lower()
-    res = ejecutar_sql("SELECT * FROM productos WHERE lower(nombre) LIKE %s OR lower(id) LIKE %s LIMIT 10", (f'%{q}%', f'%{q}%'))
+    q = request.args.get('q', '').lower().strip()
+    # Busca por Nombre o por ID parcial
+    res = ejecutar_sql("SELECT * FROM productos WHERE lower(nombre) LIKE %s OR lower(id) LIKE %s LIMIT 20", (f'%{q}%', f'%{q}%'))
     return jsonify([dict(r) for r in res])
+
+@app.route('/api/prestamos_trabajador')
+def api_prestamos_worker():
+    # Recibimos el RUT sucio y lo limpiamos (Quitar puntos, espacios)
+    w_raw = request.args.get('worker_id', '').upper()
+    w_clean = w_raw.replace('.', '').strip()
+    
+    # Buscamos préstamos ACTIVOS
+    sql = '''
+        SELECT p.id as prestamo_id, p.tool_id, p.cantidad, p.fecha_salida, prod.nombre, prod.tipo
+        FROM prestamos p 
+        JOIN productos prod ON p.tool_id = prod.id 
+        WHERE (p.worker_id = %s OR p.worker_id = %s) AND p.estado = 'ACTIVO'
+    '''
+    # Probamos con el RUT limpio Y el sucio por si acaso quedaron datos viejos
+    res = ejecutar_sql(sql, (w_clean, w_raw))
+    
+    if not res:
+        # Si no hay préstamos, verificamos si el trabajador EXISTE al menos
+        existe = ejecutar_sql("SELECT nombre FROM trabajadores WHERE rut = %s OR rut = %s", (w_clean, w_raw), one=True)
+        if existe:
+            return jsonify({'status': 'empty', 'msg': f'El trabajador {existe["nombre"]} existe, pero NO tiene préstamos activos.'})
+        else:
+            return jsonify({'status': 'error', 'msg': f'RUT no registrado en la base de datos: {w_raw}'})
+            
+    return jsonify({'status': 'ok', 'data': [dict(row) for row in res]})
+
+@app.route('/api/prestamos_ticket')
+def api_prestamos_ticket():
+    t_id = request.args.get('ticket_id', '').strip().upper()
+    
+    res = ejecutar_sql('''
+        SELECT p.id as prestamo_id, p.tool_id, p.cantidad, p.fecha_salida, prod.nombre, prod.tipo, p.worker_id
+        FROM prestamos p 
+        JOIN productos prod ON p.tool_id = prod.id 
+        WHERE p.transaction_id = %s AND p.estado = 'ACTIVO'
+    ''', (t_id,))
+    
+    if not res:
+        return jsonify({'status': 'error', 'msg': f'Ticket #{t_id} no encontrado o ya fue devuelto.'})
+        
+    return jsonify({'status': 'ok', 'data': [dict(row) for row in res]})
+
+
 
 @app.route('/procesar_salida_masiva', methods=['POST'])
 def procesar_salida():
