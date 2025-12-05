@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Devolución #{{ ids }}</title>
+    <style>
+        body { font-family: monospace; font-size: 12px; width: 80mm; margin: 0; padding: 5px; color: black; }
+        .header { text-align: center; border-bottom: 1px dashed black; padding-bottom: 10px; margin-bottom: 10px; }
+        h2, h3 { margin: 5px 0; }
+        
+        .worker-info { border: 1px solid black; padding: 5px; margin-bottom: 10px; border-radius: 4px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+        th { text-align: left; border-bottom: 1px solid black; font-size: 11px; }
+        td { padding: 4px 0; font-size: 11px; }
+        
+        .footer { text-align: center; font-size: 9px; margin-top: 20px; border-top: 1px dashed black; padding-top: 10px;}
+        .check-icon { font-size: 1.5em; font-weight: bold; }
+    </style>
+</head>
+<body onload="window.print()">
+
+    <div class="header">
+        <h2>{{ config['empresa_nombre'] }}</h2>
+        <h3>COMPROBANTE DEVOLUCIÓN</h3>
+        <p>{{ fecha }}</p>
+    </div>
+
+    <div class="worker-info">
+        <div><b>Trabajador:</b> {{ worker['nombre'] }}</div>
+        <div><b>RUT:</b> {{ worker['rut'] }}</div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>CANT</th>
+                <th>DESCRIPCIÓN</th>
+                <th>ESTADO</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td style="text-align:center; font-weight:bold;">{{ item.cantidad }}</td>
+                <td>{{ item.nombre }}<br><small>{{ item.tool_id }}</small></td>
+                <td class="check-icon">OK</td> 
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <p>Certifico que he devuelto los ítems detallados arriba conforme.</p>
+        <br>
+        _______________________<br>
+        RECIBIDO POR BODEGA
+    </div>
+
+</body>
+</html>
