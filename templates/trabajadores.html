@@ -2,46 +2,122 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Trabajadores</title>
+    <title>Gestión Trabajadores</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f6f9; }
-        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
-        input { padding: 8px; margin: 5px 0; width: 100%; box-sizing: border-box; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
-        th { background: #333; color: white; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f6f9; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        
+        /* TARJETAS */
+        .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        
+        /* FORMULARIO */
+        .form-title { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 15px; margin-bottom: 15px; }
+        
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        
+        button { width: 100%; padding: 12px; font-weight: bold; color: white; border: none; border-radius: 4px; cursor: pointer; transition: 0.2s; }
+        .btn-save { background: #27ae60; }
+        .btn-update { background: #e67e22; }
+        
+        /* TABLA */
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th { background: #34495e; color: white; padding: 12px; text-align: left; }
+        td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+        
+        /* ESTADOS */
+        .status-active { color: #27ae60; font-weight: bold; background: #eafaf1; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; }
+        .status-inactive { color: #c0392b; font-weight: bold; background: #fdedec; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; }
+        
+        .btn-edit { text-decoration: none; background: #3498db; color: white; padding: 5px 10px; border-radius: 3px; font-size: 0.8em; }
+        .btn-back { text-decoration: none; color: #7f8c8d; display: inline-block; margin-bottom: 15px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <a href="/dashboard">⬅ Volver</a>
-        <h1>Gestión de Trabajadores</h1>
-        
-        <form action="/trabajadores/guardar" method="POST" style="background:#eee; padding:15px; border-radius:5px;">
-            <h3>Nuevo Trabajador</h3>
-            <input type="text" name="rut" placeholder="RUT (Ej: 11222333-4)" required>
-            <input type="text" name="nombre" placeholder="Nombre Completo" required>
-            <input type="text" name="correo" placeholder="Correo">
-            <input type="text" name="seccion" placeholder="Cargo / Sección">
-            <input type="text" name="faena" placeholder="Faena">
-            <button type="submit" style="background:#27ae60; color:white; border:none; padding:10px; width:100%; cursor:pointer;">GUARDAR</button>
-        </form>
 
-        <table>
-            <thead><tr><th>RUT</th><th>Nombre</th><th>Cargo</th><th>Faena</th></tr></thead>
-            <tbody>
-                {% for t in trabajadores %}
-                <tr>
-                    <td>{{ t.rut }}</td>
-                    <td>{{ t.nombre }}</td>
-                    <td>{{ t.seccion }}</td>
-                    <td>{{ t.faena }}</td>
-                </tr>
+    <div class="container">
+        <a href="/dashboard" class="btn-back">⬅ Volver al Dashboard</a>
+
+        <div class="card" style="border-top: 4px solid {{ '#e67e22' if edit else '#27ae60' }};">
+            <h2 class="form-title">
+                {% if edit %} ✏️ Editando: {{ edit['nombre'] }} {% else %} ➕ Nuevo Trabajador {% endif %}
+            </h2>
+
+            <form action="/trabajadores/guardar" method="POST">
+                <div class="form-grid">
+                    <div>
+                        <label>RUT</label>
+                        <input type="text" name="rut" placeholder="11222333-K" required 
+                               value="{{ edit['rut'] if edit else '' }}" 
+                               {{ 'readonly style=background:#eee' if edit else '' }}>
+                    </div>
+                    <div>
+                        <label>Nombre Completo</label>
+                        <input type="text" name="nombre" placeholder="Nombre Apellido" required value="{{ edit['nombre'] if edit else '' }}">
+                    </div>
+                    <div>
+                        <label>Estado</label>
+                        <select name="estado">
+                            <option value="ACTIVO" {{ 'selected' if edit and edit['estado']=='ACTIVO' else '' }}>✅ ACTIVO</option>
+                            <option value="INACTIVO" {{ 'selected' if edit and edit['estado']=='INACTIVO' else '' }}>❌ INACTIVO</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <input type="text" name="seccion" placeholder="Cargo / Sección" value="{{ edit['seccion'] if edit else '' }}">
+                    <input type="text" name="faena" placeholder="Faena / Ubicación" value="{{ edit['faena'] if edit else '' }}">
+                    <input type="email" name="correo" placeholder="Correo (Opcional)" value="{{ edit['correo'] if edit else '' }}">
+                </div>
+
+                {% if edit %}
+                    <button type="submit" class="btn-update">ACTUALIZAR FICHA</button>
+                    <a href="/trabajadores" style="display:block; text-align:center; margin-top:10px; color:#e67e22;">Cancelar Edición</a>
                 {% else %}
-                <tr><td colspan="4">No hay trabajadores.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    <button type="submit" class="btn-save">GUARDAR TRABAJADOR</button>
+                {% endif %}
+            </form>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-top:0;">📋 Base de Datos</h3>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>RUT</th>
+                            <th>Nombre</th>
+                            <th>Cargo / Faena</th>
+                            <th>Estado</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in trabajadores %}
+                        <tr>
+                            <td><b>{{ t['rut'] }}</b></td>
+                            <td>{{ t['nombre'] }}</td>
+                            <td>{{ t['seccion'] }} <small style="color:#777">({{ t['faena'] }})</small></td>
+                            <td>
+                                {% if t['estado'] == 'ACTIVO' %}
+                                    <span class="status-active">ACTIVO</span>
+                                {% else %}
+                                    <span class="status-inactive">INACTIVO</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="/trabajadores/editar/{{ t['rut'] }}" class="btn-edit">Editar</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" style="text-align:center; padding:20px; color:#999;">No hay trabajadores registrados.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
+
 </body>
 </html>
