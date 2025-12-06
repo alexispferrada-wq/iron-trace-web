@@ -5,7 +5,7 @@
     <title>Configuración - Iron Trace</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f4f6f9; padding: 40px; color: #333; }
-        .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; max-width: 1100px; margin: 0 auto; }
+        .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; max-width: 1200px; margin: 0 auto; }
         .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
         h1 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 20px; }
         h3 { color: #34495e; margin-top: 0; padding-bottom: 10px; border-bottom: 1px solid #eee; }
@@ -25,65 +25,78 @@
         .server-table td { padding: 10px 0; border-bottom: 1px solid #444; }
         .server-table tr:last-child td { border-bottom: none; }
         .label-server { color: #bdc3c7; }
-        .val-server { color: #2ecc71; font-weight: bold; text-align: right; } /* COLOR VISIBLE */
-        
+        .val-server { color: #2ecc71; font-weight: bold; text-align: right; }
         .indicator { width: 10px; height: 10px; background: #2ecc71; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 5px #2ecc71; }
+
+        /* TABLA LOGS */
+        .logs-table { width: 100%; border-collapse: collapse; font-size: 0.85em; margin-top: 10px; }
+        .logs-table th { background: #eee; padding: 8px; text-align: left; }
+        .logs-table td { border-bottom: 1px solid #eee; padding: 8px; color: #555; }
     </style>
 </head>
 <body>
 
-    <a href="/dashboard" style="text-decoration:none; color:#555; display:block; max-width:1100px; margin:0 auto 10px auto;">⬅ Volver al Dashboard</a>
+    <a href="/dashboard" style="text-decoration:none; color:#555; display:block; max-width:1200px; margin:0 auto 10px auto;">⬅ Volver al Dashboard</a>
 
     <div class="grid">
         <div>
             <div class="card">
                 <h1>⚙️ Configuración Global</h1>
-                
                 {% with messages = get_flashed_messages() %}
                     {% if messages %}<div style="background:#d4edda; color:#155724; padding:10px; border-radius:4px; margin-bottom:20px;">{{ messages[0] }}</div>{% endif %}
                 {% endwith %}
-
                 <form method="POST">
                     <label>Nombre Empresa (Ticket)</label>
                     <input type="text" name="empresa_nombre" value="{{ config['empresa_nombre'] }}">
-
                     <label>Dirección Faena</label>
                     <input type="text" name="empresa_direccion" value="{{ config['empresa_direccion'] }}">
-
                     <label>Mensaje Pie de Ticket</label>
                     <input type="text" name="ticket_footer" value="{{ config['ticket_footer'] }}">
-
                     <label>ID Impresora (Red/Local)</label>
                     <input type="text" name="impresora_nombre" value="{{ config['impresora_nombre'] }}">
-
                     <button type="submit">GUARDAR CAMBIOS</button>
                 </form>
             </div>
 
             <div class="card" style="border-top: 4px solid #3498db;">
                 <h3>📥 Carga Masiva de Facturas (CSV)</h3>
-                <p style="font-size:0.9em; color:#666; margin-bottom:15px;">
-                    Suba un archivo CSV con el formato: <code>ID_PRODUCTO, CANTIDAD, PRECIO</code> (sin encabezados).
-                </p>
+                <p style="font-size:0.9em; color:#666; margin-bottom:15px;">Formato: <code>ID_PRODUCTO, CANTIDAD, PRECIO</code></p>
                 <form method="POST" enctype="multipart/form-data">
                     <label>Número Factura Global</label>
                     <input type="text" name="num_factura" placeholder="Ej: FAC-9999" required>
-                    
                     <label>Archivo CSV</label>
                     <input type="file" name="archivo_csv" accept=".csv" required>
-                    
                     <button type="submit" class="btn-upload">PROCESAR CARGA</button>
                 </form>
+            </div>
+
+            <div class="card" style="border-top: 4px solid #e67e22;">
+                <h3>🛡️ Auditoría de Accesos (Últimos 50)</h3>
+                <div style="max-height: 300px; overflow-y: auto;">
+                    <table class="logs-table">
+                        <thead><tr><th>Fecha</th><th>Usuario</th><th>IP</th><th>Dispositivo</th></tr></thead>
+                        <tbody>
+                            {% for log in logs %}
+                            <tr>
+                                <td>{{ log.fecha }}</td>
+                                <td><b>{{ log.usuario }}</b></td>
+                                <td style="font-family:monospace;">{{ log.ip_address }}</td>
+                                <td style="font-size:0.8em;">{{ log.device_info[:50] }}...</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="4" style="text-align:center;">Sin registros.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
         <div class="card server-card">
             <h3 style="color:white; border-color:#555;">📡 Estado del Servidor</h3>
-            
             <div style="text-align:center; padding:20px 0; background:rgba(0,0,0,0.2); border-radius:4px; margin-bottom:20px;">
                 <span class="indicator"></span> SISTEMA ONLINE
             </div>
-
             <table class="server-table">
                 <tr><td class="label-server">Hora Servidor</td><td class="val-server" style="color:#f1c40f;">{{ server.time_server }}</td></tr>
                 <tr><td class="label-server">Zona Horaria</td><td class="val-server">{{ server.timezone }}</td></tr>
@@ -93,7 +106,6 @@
                 <tr><td class="label-server">CPUs</td><td class="val-server">{{ server.cpu }}</td></tr>
                 <tr><td class="label-server">Runtime</td><td class="val-server">Python {{ server.python }}</td></tr>
             </table>
-            
             <div style="margin-top:20px; font-size:0.7em; color:#777; word-break: break-all;">
                 PATH: {{ server.app_path }}
             </div>
