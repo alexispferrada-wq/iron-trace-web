@@ -61,36 +61,26 @@ def ejecutar_sql(sql, params=(), one=False):
         conn.close()
 
 def init_db():
+    # ... (Misma inicialización de siempre, resumida para ahorrar espacio) ...
     conn, db_type = get_db_connection()
     c = conn.cursor()
     t_text = "TEXT" if db_type == 'SQLITE' else "VARCHAR(255)"
-    
-    # Intentar crear tablas base
     queries = [
         f"CREATE TABLE IF NOT EXISTS usuarios (username {t_text} PRIMARY KEY, password {t_text}, rol {t_text})",
-        # Trabajadores con estado
         f"CREATE TABLE IF NOT EXISTS trabajadores (rut {t_text} PRIMARY KEY, nombre {t_text}, correo {t_text}, seccion {t_text}, faena {t_text}, estado {t_text})",
         f"CREATE TABLE IF NOT EXISTS productos (id {t_text} PRIMARY KEY, nombre {t_text}, precio INTEGER, stock INTEGER, tipo {t_text})",
         f"CREATE TABLE IF NOT EXISTS config (clave {t_text} PRIMARY KEY, valor {t_text})",
-        f"CREATE TABLE IF NOT EXISTS facturas (id SERIAL PRIMARY KEY, numero {t_text}, fecha {t_text}, usuario {t_text})" if db_type == 'POSTGRES' else 
-        f"CREATE TABLE IF NOT EXISTS facturas (id INTEGER PRIMARY KEY AUTOINCREMENT, numero {t_text}, fecha {t_text}, usuario {t_text})",
-        f"CREATE TABLE IF NOT EXISTS prestamos (id SERIAL PRIMARY KEY, transaction_id {t_text}, worker_id {t_text}, tool_id {t_text}, tipo_item {t_text}, cantidad INTEGER, fecha_salida {t_text}, fecha_regreso {t_text}, estado {t_text})" if db_type == 'POSTGRES' else
-        f"CREATE TABLE IF NOT EXISTS prestamos (id INTEGER PRIMARY KEY AUTOINCREMENT, transaction_id {t_text}, worker_id {t_text}, tool_id {t_text}, tipo_item {t_text}, cantidad INTEGER, fecha_salida {t_text}, fecha_regreso {t_text}, estado {t_text})",
-        f"CREATE TABLE IF NOT EXISTS bajas (id SERIAL PRIMARY KEY, producto_id {t_text}, cantidad INTEGER, motivo {t_text}, fecha {t_text}, usuario {t_text})" if db_type == 'POSTGRES' else
-        f"CREATE TABLE IF NOT EXISTS bajas (id INTEGER PRIMARY KEY AUTOINCREMENT, producto_id {t_text}, cantidad INTEGER, motivo {t_text}, fecha {t_text}, usuario {t_text})"
+        f"CREATE TABLE IF NOT EXISTS facturas (id SERIAL PRIMARY KEY, numero {t_text}, fecha {t_text}, usuario {t_text})" if db_type == 'POSTGRES' else f"CREATE TABLE IF NOT EXISTS facturas (id INTEGER PRIMARY KEY AUTOINCREMENT, numero {t_text}, fecha {t_text}, usuario {t_text})",
+        f"CREATE TABLE IF NOT EXISTS prestamos (id SERIAL PRIMARY KEY, transaction_id {t_text}, worker_id {t_text}, tool_id {t_text}, tipo_item {t_text}, cantidad INTEGER, fecha_salida {t_text}, fecha_regreso {t_text}, estado {t_text})" if db_type == 'POSTGRES' else f"CREATE TABLE IF NOT EXISTS prestamos (id INTEGER PRIMARY KEY AUTOINCREMENT, transaction_id {t_text}, worker_id {t_text}, tool_id {t_text}, tipo_item {t_text}, cantidad INTEGER, fecha_salida {t_text}, fecha_regreso {t_text}, estado {t_text})",
+        f"CREATE TABLE IF NOT EXISTS bajas (id SERIAL PRIMARY KEY, producto_id {t_text}, cantidad INTEGER, motivo {t_text}, fecha {t_text}, usuario {t_text})" if db_type == 'POSTGRES' else f"CREATE TABLE IF NOT EXISTS bajas (id INTEGER PRIMARY KEY AUTOINCREMENT, producto_id {t_text}, cantidad INTEGER, motivo {t_text}, fecha {t_text}, usuario {t_text})"
     ]
-    
     for q in queries:
         try: c.execute(q); conn.commit()
         except: conn.rollback()
-    
-    # PARCHE: Agregar columna 'estado' a trabajadores si no existe (Migración automática)
     try:
         c.execute("ALTER TABLE trabajadores ADD COLUMN estado " + t_text)
         conn.commit()
-    except: pass # Si falla es porque ya existe, ignoramos
-
-    # Admin default
+    except: pass
     try:
         if not c.execute("SELECT * FROM usuarios WHERE username='admin'").fetchone():
             c.execute(f"INSERT INTO usuarios (username, password, rol) VALUES ('admin', 'admin123', 'admin')")
@@ -100,7 +90,7 @@ def init_db():
 
 init_db()
 
-# --- RUTAS ---
+# --- RUTAS PRINCIPALES ---
 @app.route('/')
 def root(): return redirect(url_for('login'))
 
@@ -115,7 +105,6 @@ def login():
             if u:
                 if u['password'].startswith(('scrypt:', 'pbkdf2:')): valid = check_password_hash(u['password'], pwd)
                 elif u['password'] == pwd: valid = True
-            
             if valid:
                 session['user'] = u['username']; session['rol'] = u['rol']
                 return redirect(url_for('panel_operador') if u['rol'] == 'operador' else url_for('dashboard'))
@@ -130,38 +119,33 @@ def logout(): session.clear(); return redirect(url_for('login'))
 def dashboard():
     if 'user' not in session: return redirect(url_for('login'))
     if session.get('rol') == 'operador': return redirect(url_for('panel_operador'))
-    
     stats = {'insumos_hoy':0, 'prestamos_valor':0, 'prestamos_qty':0}
     en_uso = []; alertas = []
-    
     try:
         hoy = get_chile_time().strftime("%Y-%m-%d")
         res = ejecutar_sql("SELECT SUM(p.cantidad * prod.precio) as t FROM prestamos p JOIN productos prod ON p.tool_id=prod.id WHERE p.tipo_item='INSUMO' AND p.fecha_salida LIKE %s", (f'{hoy}%',), one=True)
-        stats['insumos_hoy'] = res['t'] if res and res['t'] else 0
-        
+        stats['insumos_hoy'] = res['t'] or 0
         res2 = ejecutar_sql("SELECT SUM(prod.precio) as t, COUNT(*) as c FROM prestamos p JOIN productos prod ON p.tool_id=prod.id WHERE p.estado='ACTIVO'", one=True)
         if res2: stats['prestamos_valor'] = res2['t'] or 0; stats['prestamos_qty'] = res2['c']
-        
         alertas = ejecutar_sql("SELECT * FROM productos WHERE tipo='INSUMO' AND stock <= 10 ORDER BY stock ASC LIMIT 5")
         en_uso = ejecutar_sql("SELECT p.*, prod.nombre FROM prestamos p JOIN productos prod ON p.tool_id=prod.id WHERE p.estado='ACTIVO' ORDER BY p.fecha_salida DESC LIMIT 20")
     except: pass
-
     server_info = {'time_server': get_chile_time().strftime("%H:%M:%S (CLT)"), 'db_mode': 'PostgreSQL' if DATABASE_URL else 'SQLite', 'os': platform.system()}
     config_raw = ejecutar_sql("SELECT * FROM config")
     config = {row['clave']: row['valor'] for row in config_raw} if config_raw else {}
-
     return render_template('dashboard.html', stats=stats, en_uso=en_uso, alertas=alertas, rol=session['rol'], server=server_info, config=config)
 
-# --- TRABAJADORES (ACTUALIZADO CON EDICIÓN) ---
+# --- TRABAJADORES (ARREGLADO) ---
 @app.route('/trabajadores')
-@app.route('/trabajadores/editar/<rut>')
+@app.route('/trabajadores/editar/<path:rut>') # Usamos path para permitir puntos
 def gestion_trabajadores(rut=None):
     if session.get('rol') not in ['admin', 'supervisor']: return redirect(url_for('login'))
     
     trabajador_edit = None
     if rut:
-        # Limpiar RUT por seguridad
+        # Aseguramos que el RUT se busque limpio en la BD
         rut_clean = rut.replace('.', '').strip().upper()
+        # Buscamos usando %s para evitar inyeccion
         trabajador_edit = ejecutar_sql("SELECT * FROM trabajadores WHERE rut=%s", (rut_clean,), one=True)
     
     trabajadores = ejecutar_sql("SELECT * FROM trabajadores ORDER BY nombre ASC")
@@ -171,18 +155,30 @@ def gestion_trabajadores(rut=None):
 def guardar_trabajador():
     if 'user' not in session: return redirect(url_for('login'))
     rut = request.form['rut'].replace('.', '').strip().upper()
-    estado = request.form.get('estado', 'ACTIVO') # Por defecto activo
+    estado = request.form.get('estado', 'ACTIVO')
     
     try:
-        # UPSERT Manual: Borrar e Insertar para actualizar todos los campos incluyendo estado
+        # UPSERT Manual
         ejecutar_sql('DELETE FROM trabajadores WHERE rut=%s', (rut,))
         ejecutar_sql('INSERT INTO trabajadores (rut, nombre, correo, seccion, faena, estado) VALUES (%s,%s,%s,%s,%s,%s)', 
                      (rut, request.form['nombre'], request.form['correo'], request.form['seccion'], request.form['faena'], estado))
-        flash('Trabajador guardado/actualizado.')
+        flash('Trabajador guardado exitosamente.')
     except Exception as e: flash(f'Error: {e}')
     return redirect(url_for('gestion_trabajadores'))
 
-# --- INVENTARIO Y BAJAS ---
+# --- RUTA DE REPARACIÓN (SOLO EJECUTAR UNA VEZ) ---
+@app.route('/fix_estados')
+def fix_estados():
+    if session.get('rol') != 'admin': return "Acceso Denegado"
+    try:
+        # Pone ACTIVO a todos los que tengan estado nulo o vacío
+        ejecutar_sql("UPDATE trabajadores SET estado = 'ACTIVO' WHERE estado IS NULL OR estado = ''")
+        flash("✅ Todos los trabajadores han sido reactivados.")
+    except Exception as e:
+        flash(f"Error reparando: {e}")
+    return redirect(url_for('gestion_trabajadores'))
+
+# --- INVENTARIO, REPORTES, APIs (Mantenemos igual para ahorrar espacio, son funcionales) ---
 @app.route('/inventario')
 def vista_inventario():
     if session.get('rol') not in ['admin', 'supervisor']: return redirect(url_for('login'))
@@ -222,7 +218,6 @@ def ingreso_manual_stock():
     except Exception as e: flash(f'Error: {e}')
     return redirect(url_for('vista_inventario'))
 
-# --- REPORTES ---
 @app.route('/reportes', methods=['GET', 'POST'])
 def reportes():
     if session.get('rol') not in ['admin', 'supervisor']: return redirect(url_for('login'))
@@ -257,7 +252,6 @@ def descargar_reporte_pdf():
         if y<50: c.showPage(); y=height-50
     c.save(); buffer.seek(0); r=make_response(buffer.getvalue()); r.headers['Content-Type']='application/pdf'; r.headers['Content-Disposition']='attachment; filename=reporte.pdf'; return r
 
-# --- OPERADOR Y APIs ---
 @app.route('/operador')
 def panel_operador(): return render_template('operador.html') if 'user' in session else redirect(url_for('login'))
 
@@ -270,9 +264,8 @@ def api_buscar():
 def api_buscar_trabajador():
     q = request.args.get('q', '').upper().strip()
     if not q: return jsonify([])
-    # Solo buscar trabajadores ACTIVOS
-    sql = "SELECT * FROM trabajadores WHERE (rut LIKE %s OR upper(nombre) LIKE %s) AND estado='ACTIVO' LIMIT 5"
-    return jsonify([dict(r) for r in ejecutar_sql(sql, (f'%{q}%', f'%{q}%'))])
+    # Mostrar solo activos
+    return jsonify([dict(r) for r in ejecutar_sql("SELECT * FROM trabajadores WHERE (rut LIKE %s OR upper(nombre) LIKE %s) AND estado='ACTIVO' LIMIT 5", (f'%{q}%', f'%{q}%'))])
 
 @app.route('/api/prestamos_ticket')
 def api_prestamos_ticket():
@@ -342,10 +335,10 @@ def configuracion_global():
     if session.get('rol') != 'admin': return redirect(url_for('dashboard'))
     if request.method == 'POST':
         if 'archivo_csv' in request.files:
-            # Lógica carga masiva
             file = request.files['archivo_csv']; num_fac = request.form.get('num_factura', 'MASIVA')
             if file and file.filename.endswith('.csv'):
                 try:
+                    import csv
                     stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None); csv_input = csv.reader(stream); count = 0
                     ejecutar_sql('INSERT INTO facturas (numero, fecha, usuario) VALUES (%s,%s,%s)', (f"MASIVA: {num_fac}", get_str_now(), session['user']))
                     for row in csv_input:
@@ -367,7 +360,6 @@ def configuracion_global():
                     if check: ejecutar_sql("UPDATE config SET valor=%s WHERE clave=%s", (val, key))
                     else: ejecutar_sql("INSERT INTO config (clave, valor) VALUES (%s, %s)", (key, val))
             flash('Configuración actualizada')
-    
     conf_list = ejecutar_sql("SELECT * FROM config"); config = {r['clave']: r['valor'] for r in conf_list} if conf_list else {}
     server_info = {'time_server': get_chile_time().strftime("%H:%M:%S"), 'db_mode': 'PostgreSQL' if DATABASE_URL else 'SQLite', 'os': platform.system(), 'python': platform.python_version()}
     return render_template('config_admin.html', config=config, server=server_info)
@@ -376,7 +368,7 @@ def configuracion_global():
 def ver_ticket(ticket_id):
     items = ejecutar_sql("SELECT p.cantidad, prod.nombre, p.tipo_item FROM prestamos p JOIN productos prod ON p.tool_id = prod.id WHERE p.transaction_id=%s", (ticket_id,))
     wid = ejecutar_sql("SELECT worker_id, fecha_salida FROM prestamos WHERE transaction_id=%s LIMIT 1", (ticket_id,), one=True)
-    if not items: return "Error"
+    if not items: return "Ticket no encontrado"
     worker = ejecutar_sql("SELECT * FROM trabajadores WHERE rut=%s", (wid['worker_id'],), one=True)
     conf = ejecutar_sql("SELECT * FROM config"); config = {r['clave']: r['valor'] for r in conf} if conf else {}
     return render_template('ticket.html', ticket_id=ticket_id, items=items, worker=worker, fecha=wid['fecha_salida'], config=config)
