@@ -227,19 +227,27 @@ def ingreso_manual_stock():
 @app.route('/reportes', methods=['GET', 'POST'])
 def reportes():
     if session.get('rol') not in ['admin', 'supervisor']: return redirect(url_for('login'))
-    term = request.form.get('search_term', '').strip().upper()
     
-    # Lógica de búsqueda inteligente (limpia puntos para RUT)
+    # Obtener término y limpiar
+    term = request.form.get('search_term', '').strip().upper()
     clean_term = term.replace('.', '').strip()
     
+    # Consulta Base
     sql = "SELECT p.*, prod.nombre, prod.precio FROM prestamos p JOIN productos prod ON p.tool_id=prod.id"
-    if term: 
-        # Busca por nombre, ID herramienta, O por RUT limpio
-        sql += f" WHERE p.worker_id LIKE '%{clean_term}%' OR p.tool_id LIKE '%{term}%' OR prod.nombre LIKE '%{term}%'"
+    params = () # Tupla de parámetros vacía
+    
+    if term:
+        # Usamos %s como marcador de posición (funciona en Postgres y nuestro adaptador lo cambia a ? para SQLite)
+        sql += " WHERE (p.worker_id LIKE %s OR p.tool_id LIKE %s OR prod.nombre LIKE %s)"
+        # Creamos los parámetros con los comodines % incluidos de forma segura
+        params = (f'%{clean_term}%', f'%{term}%', f'%{term}%')
     
     sql += " ORDER BY p.fecha_salida DESC LIMIT 100"
-    movs = ejecutar_sql(sql)
     
+    # Ejecutamos pasando los parámetros (ESTO EVITA LA CAÍDA)
+    movs = ejecutar_sql(sql, params)
+    
+    # Calcular Totales para Gráficos
     stock_bodega = ejecutar_sql("SELECT SUM(stock) as t FROM productos WHERE tipo='HERRAMIENTA'", one=True)['t'] or 0
     stock_terreno = ejecutar_sql("SELECT COUNT(*) as t FROM prestamos WHERE estado='ACTIVO' AND tipo_item='HERRAMIENTA'", one=True)['t'] or 0
     data_comparativa = {'labels': ['En Bodega', 'En Terreno'], 'values': [stock_bodega, stock_terreno]}
@@ -249,11 +257,11 @@ def reportes():
     for r in raw_insumos:
         dia = str(r['fecha_salida'])[:10]
         chart_days[dia] = chart_days.get(dia, 0) + (r['total'] or 0)
+    
     fechas_ord = sorted(chart_days.keys())
     data_insumos = {'labels': fechas_ord, 'values': [chart_days[d] for d in fechas_ord]}
 
     return render_template('reportes.html', movimientos=movs, search_term=term, chart_days=data_insumos, chart_comparativa=data_comparativa)
-
 @app.route('/reportes/descargar_pdf')
 def descargar_reporte_pdf():
     if session.get('rol') not in ['admin', 'supervisor']: return "Acceso Denegado"
