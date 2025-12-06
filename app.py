@@ -310,6 +310,36 @@ def ticket_devolucion():
     
     return render_template('ticket_devolucion.html', ids=ids[0], items=items, worker=worker, fecha=items[0]['fecha_regreso'], config=config)
 
+# --- NUEVAS APIS PARA OPERADOR V2 ---
+
+@app.route('/api/buscar_trabajador')
+def api_buscar_trabajador():
+    q = request.args.get('q', '').upper().strip()
+    if not q: return jsonify([])
+    
+    # Busca por RUT o por NOMBRE
+    sql = "SELECT * FROM trabajadores WHERE rut LIKE %s OR upper(nombre) LIKE %s LIMIT 5"
+    res = ejecutar_sql(sql, (f'%{q}%', f'%{q}%'))
+    return jsonify([dict(r) for r in res])
+
+@app.route('/api/prestamos_ticket')
+def api_prestamos_ticket():
+    # El scanner QR puede enviar "TICKET:ABCD123", limpiamos eso
+    tid = request.args.get('ticket_id', '').replace('TICKET:', '').strip().upper()
+    
+    sql = '''
+        SELECT p.id as prestamo_id, p.tool_id, p.cantidad, p.fecha_salida, prod.nombre, prod.tipo 
+        FROM prestamos p 
+        JOIN productos prod ON p.tool_id = prod.id 
+        WHERE p.transaction_id=%s AND p.estado='ACTIVO'
+    '''
+    res = ejecutar_sql(sql, (tid,))
+    
+    if not res: 
+        return jsonify({'status': 'error', 'msg': 'Ticket no encontrado o ya devuelto'})
+        
+    return jsonify({'status': 'ok', 'data': [dict(r) for r in res]})
+    
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
