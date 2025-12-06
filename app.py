@@ -336,4 +336,76 @@ def descargar_reporte_pdf():
     c.setFont("Helvetica-Bold", 16); c.drawString(30, height - 40, "Reporte Iron Trace")
     c.setFont("Helvetica", 10); c.drawString(30, height - 60, f"Fecha: {get_str_now()}")
     
-    y =
+    y = height - 90
+    c.drawString(30, y, "FECHA"); c.drawString(150, y, "TRABAJADOR"); c.drawString(250, y, "ITEM"); c.drawString(450, y, "CANT")
+    y -= 15
+    movs = ejecutar_sql("SELECT p.*, prod.nombre FROM prestamos p JOIN productos prod ON p.tool_id=prod.id ORDER BY p.fecha_salida DESC LIMIT 50")
+    for m in movs:
+        if y < 40: c.showPage(); y = height - 50
+        c.drawString(30, y, str(m['fecha_salida'])[:10]); c.drawString(150, y, m['worker_id']); c.drawString(250, y, m['nombre'][:30]); c.drawString(450, y, str(m['cantidad']))
+        y -= 12
+    c.save(); buffer.seek(0)
+    response = make_response(buffer.getvalue())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = 'attachment; filename=reporte.pdf'
+    return response
+
+# --- ADMIN ---
+@app.route('/usuarios')
+def gestion_usuarios():
+    if session.get('rol') != 'admin': return redirect(url_for('dashboard'))
+    return render_template('users.html', usuarios=ejecutar_sql("SELECT * FROM usuarios"), rol_actual=session['rol'])
+
+@app.route('/usuarios/guardar', methods=['POST'])
+def guardar_usuario():
+    if session.get('rol') != 'admin': return "Acceso Denegado"
+    u, p, r = request.form['username'], request.form['password'], request.form['rol']
+    existe = ejecutar_sql("SELECT * FROM usuarios WHERE username=%s", (u,), one=True)
+    if existe:
+        if p: ejecutar_sql("UPDATE usuarios SET password=%s, rol=%s WHERE username=%s", (p, r, u))
+        else: ejecutar_sql("UPDATE usuarios SET rol=%s WHERE username=%s", (r, u))
+    else: ejecutar_sql("INSERT INTO usuarios (username, password, rol) VALUES (%s,%s,%s)", (u, p if p else "1234", r))
+    return redirect(url_for('gestion_usuarios'))
+
+@app.route('/admin/config', methods=['GET', 'POST'])
+def configuracion_global():
+    if session.get('rol') != 'admin': return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        for key, val in request.form.items():
+            check = ejecutar_sql("SELECT 1 FROM config WHERE clave=%s", (key,), one=True)
+            if check: ejecutar_sql("UPDATE config SET valor=%s WHERE clave=%s", (val, key))
+            else: ejecutar_sql("INSERT INTO config (clave, valor) VALUES (%s, %s)", (key, val))
+        flash('Configuración actualizada')
+    
+    conf_list = ejecutar_sql("SELECT * FROM config")
+    config = {row['clave']: row['valor'] for row in conf_list} if conf_list else {}
+    server_info = {'time_server': get_str_now(), 'db_mode': 'PostgreSQL' if DATABASE_URL else 'SQLite Local', 'os': platform.system()}
+    return render_template('config_admin.html', config=config, server=server_info)
+
+# --- TICKETS ---
+@app.route('/ticket/<ticket_id>')
+def ver_ticket(ticket_id):
+    items = ejecutar_sql("SELECT p.cantidad, prod.nombre, p.tipo_item FROM prestamos p JOIN productos prod ON p.tool_id = prod.id WHERE p.transaction_id=%s", (ticket_id,))
+    wid = ejecutar_sql("SELECT worker_id, fecha_salida FROM prestamos WHERE transaction_id=%s LIMIT 1", (ticket_id,), one=True)
+    if not items or not wid: return "Ticket no encontrado"
+    worker = ejecutar_sql("SELECT * FROM trabajadores WHERE rut=%s", (wid['worker_id'],), one=True)
+    conf_list = ejecutar_sql("SELECT * FROM config")
+    config = {row['clave']: row['valor'] for row in conf_list} if conf_list else {}
+    return render_template('ticket.html', ticket_id=ticket_id, items=items, worker=worker, fecha=wid['fecha_salida'], config=config)
+
+@app.route('/ticket_devolucion')
+def ticket_devolucion():
+    ids = request.args.get('ids', '').split(',')
+    safe_ids = [str(int(x)) for x in ids if x.isdigit()]
+    if not safe_ids: return "IDs inválidos"
+    placeholders = ','.join(['%s'] * len(safe_ids))
+    items = ejecutar_sql(f"SELECT p.cantidad, prod.nombre, p.tool_id, p.worker_id, p.fecha_regreso FROM prestamos p JOIN productos prod ON p.tool_id = prod.id WHERE p.id IN ({placeholders})", tuple(safe_ids))
+    if not items: return "Error ticket"
+    worker = ejecutar_sql("SELECT * FROM trabajadores WHERE rut=%s", (items[0]['worker_id'],), one=True)
+    conf_list = ejecutar_sql("SELECT * FROM config")
+    config = {row['clave']: row['valor'] for row in conf_list} if conf_list else {}
+    return render_template('ticket_devolucion.html', ids=ids[0], items=items, worker=worker, fecha=items[0]['fecha_regreso'], config=config)
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
