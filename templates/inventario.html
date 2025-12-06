@@ -2,139 +2,105 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Inventario & Logística - Iron Trace</title>
+    <title>Inventario - Iron Trace</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f6f9; padding: 20px; color: #333; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { margin-top: 0; color: #27ae60; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        /* (Tus estilos anteriores se mantienen, agrega estos:) */
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f6f9; padding: 20px; }
+        .grid-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .panel { padding: 20px; border-radius: 8px; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-top: 4px solid #ccc; }
         
-        .grid-panels { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+        .panel-add { border-color: #2ecc71; }
+        .panel-baja { border-color: #e74c3c; } /* ROJO PARA BAJAS */
         
-        .panel { padding: 20px; border-radius: 5px; border: 1px solid #ddd; }
-        .panel-blue { background: #eaf2f8; border-color: #d4e6f1; }
-        .panel-green { background: #e9f7ef; border-color: #d4efdf; }
-        .panel-yellow { background: #fef9e7; border-color: #fdebd0; }
-        
-        h3 { margin-top: 0; color: #555; font-size: 1.1em; }
-        
-        .file-drop { border: 2px dashed #bbb; padding: 15px; text-align: center; background: white; cursor: pointer; border-radius: 4px; transition: 0.2s; font-size: 0.9em; }
-        .file-drop:hover { border-color: #27ae60; background: #f9f9f9; }
-        
-        input, select { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        
-        button { width: 100%; padding: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; }
-        .btn-blue { background: #3498db; }
+        input, select, button { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { font-weight: bold; cursor: pointer; color: white; border: none; }
         .btn-green { background: #27ae60; }
-        .btn-yellow { background: #f1c40f; color: #333; }
+        .btn-red { background: #c0392b; }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9em; }
-        th { background: #333; color: white; padding: 10px; text-align: left; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
+        th { background: #34495e; color: white; padding: 10px; text-align: left; }
         td { padding: 8px; border-bottom: 1px solid #eee; }
-        
-        .flash { background: #d4edda; color: #155724; padding: 10px; margin-bottom: 20px; border-radius: 4px; text-align: center; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <a href="/dashboard" style="text-decoration:none; color:#555;">⬅ Volver al Dashboard</a>
-        <h1>📦 Gestión de Inventario y Compras</h1>
+    <a href="/dashboard" style="text-decoration:none; color:#555;">⬅ Volver al Dashboard</a>
+    <h1>📦 Gestión de Inventario</h1>
 
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}<div class="flash">{{ messages[0] }}</div>{% endif %}
-        {% endwith %}
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}<div style="background:#d4edda; padding:10px; margin-bottom:10px;">{{ messages[0] }}</div>{% endif %}
+    {% endwith %}
 
-        <div class="grid-panels">
-            
-            <div class="panel panel-yellow">
-                <h3>✍️ Ingreso Manual (1 a 1)</h3>
-                <form action="/inventario/ingreso_manual" method="POST">
-                    <label style="font-size:0.8em; font-weight:bold;">N° Factura / Guía</label>
-                    <input type="text" name="num_documento" placeholder="Ej: FAC-1234" required>
-                    
-                    <label style="font-size:0.8em; font-weight:bold;">Código Producto</label>
-                    <input type="text" name="id_producto" placeholder="Escanear o escribir ID" required list="lista_productos">
-                    <datalist id="lista_productos">
-                        {% for p in productos %}
-                            <option value="{{ p.id }}">{{ p.nombre }}</option>
-                        {% endfor %}
-                    </datalist>
-
-                    <div style="display:flex; gap:5px;">
-                        <div style="flex:1;">
-                            <label style="font-size:0.8em;">Cantidad</label>
-                            <input type="number" name="cantidad" value="1" min="1" required>
-                        </div>
-                        <div style="flex:1;">
-                            <label style="font-size:0.8em;">Precio Nuevo (Opc)</label>
-                            <input type="number" name="precio" placeholder="$">
-                        </div>
-                    </div>
-                    <button type="submit" class="btn-yellow">SUMAR AL STOCK</button>
-                </form>
-            </div>
-
-            <div class="panel panel-green">
-                <h3>🧾 Carga Masiva Factura</h3>
-                <form action="/inventario/subir_factura" method="POST" enctype="multipart/form-data">
-                    <input type="text" name="num_documento" placeholder="N° Factura Global" required>
-                    <div class="file-drop" style="border-color:#27ae60;">
-                        <label style="cursor:pointer; display:block;">
-                            📥 CSV Factura<br>
-                            <small>CODIGO, CANTIDAD, PRECIO</small>
-                            <input type="file" name="archivo_factura" accept=".csv" required style="display:none;" onchange="this.form.submit()">
-                        </label>
-                    </div>
-                </form>
-            </div>
-
-            <div class="panel panel-blue">
-                <h3>📂 Maestro Productos</h3>
-                <form action="/inventario/carga_masiva_productos" method="POST" enctype="multipart/form-data">
-                    <div class="file-drop">
-                        <label style="cursor:pointer; display:block;">
-                            📄 CSV Maestro<br>
-                            <small>ID, NOMBRE, PRECIO, STOCK, TIPO</small>
-                            <input type="file" name="archivo_csv" accept=".csv" required style="display:none;" onchange="this.form.submit()">
-                        </label>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <h3>📦 Inventario Actual</h3>
-        <div style="height: 300px; overflow-y: auto; border:1px solid #eee;">
-            <table>
-                <thead>
-                    <tr><th>ID</th><th>Nombre</th><th>Tipo</th><th>Precio</th><th>Stock</th></tr>
-                </thead>
-                <tbody>
-                    {% for p in productos %}
-                    <tr>
-                        <td><b>{{ p.id }}</b></td>
-                        <td>{{ p.nombre }}</td>
-                        <td><span style="font-size:0.8em; padding:2px 5px; background:{{ '#e3f2fd' if p.tipo=='HERRAMIENTA' else '#fff3e0' }}; border-radius:3px;">{{ p.tipo }}</span></td>
-                        <td>${{ p.precio }}</td>
-                        <td style="font-weight:bold; color:{{ 'red' if p.stock < 5 else 'green' }};">{{ p.stock }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <div class="grid-panels">
         
-        <h3 style="margin-top:20px;">📜 Historial de Movimientos (Facturas)</h3>
-        <div style="max-height: 150px; overflow-y: auto;">
-            <table>
-                <thead><tr><th>N° Doc</th><th>Fecha</th><th>Usuario</th></tr></thead>
-                <tbody>
-                    {% for f in facturas %}
-                    <tr><td>{{ f.numero }}</td><td>{{ f.fecha }}</td><td>{{ f.usuario }}</td></tr>
-                    {% else %}
-                    <tr><td colspan="3" style="text-align:center; color:#999;">Sin movimientos recientes.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="panel panel-add">
+            <h3>📥 Ingreso de Stock</h3>
+            <form action="/inventario/ingreso_manual" method="POST">
+                <input type="text" name="id_producto" placeholder="ID Producto (Ej: T-001)" required>
+                <input type="number" name="cantidad" placeholder="Cantidad a sumar" required min="1">
+                <input type="text" name="num_documento" placeholder="N° Factura / Guía">
+                <button type="submit" class="btn-green">SUMAR STOCK</button>
+            </form>
+        </div>
+
+        <div class="panel panel-baja">
+            <h3>🗑️ Dar de Baja (Pérdida/Robo)</h3>
+            <form action="/inventario/dar_baja" method="POST" onsubmit="return confirm('¿Seguro que desea eliminar estas unidades del inventario?');">
+                <input type="text" name="id_producto" placeholder="ID Producto" required>
+                <input type="number" name="cantidad" placeholder="Cantidad a eliminar" required min="1">
+                <select name="motivo" required>
+                    <option value="" disabled selected>Seleccione Motivo...</option>
+                    <option value="ROBO">Robo</option>
+                    <option value="PERDIDA">Pérdida</option>
+                    <option value="DAÑO">Daño Irreparable</option>
+                    <option value="OBSOLETO">Obsolescencia</option>
+                </select>
+                <button type="submit" class="btn-red">DAR DE BAJA</button>
+            </form>
         </div>
 
     </div>
+
+    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:20px;">
+        <div>
+            <h3>Inventario Actual</h3>
+            <div style="max-height:400px; overflow-y:auto; border:1px solid #ddd;">
+                <table>
+                    <thead><tr><th>ID</th><th>Nombre</th><th>Stock</th><th>Tipo</th></tr></thead>
+                    <tbody>
+                        {% for p in productos %}
+                        <tr>
+                            <td><b>{{ p.id }}</b></td>
+                            <td>{{ p.nombre }}</td>
+                            <td style="font-weight:bold; color:{{ 'red' if p.stock < 5 else 'green' }}">{{ p.stock }}</td>
+                            <td>{{ p.tipo }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div>
+            <h3>Historial de Bajas</h3>
+            <div style="max-height:400px; overflow-y:auto; border:1px solid #ddd;">
+                <table>
+                    <thead><tr><th>ID Prod</th><th>Cant</th><th>Motivo</th><th>Fecha</th></tr></thead>
+                    <tbody>
+                        {% for b in bajas %}
+                        <tr>
+                            <td>{{ b.producto_id }}</td>
+                            <td style="color:red; font-weight:bold;">-{{ b.cantidad }}</td>
+                            <td>{{ b.motivo }}</td>
+                            <td style="font-size:0.8em;">{{ b.fecha }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" style="text-align:center; color:#999;">Sin registros de bajas.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
