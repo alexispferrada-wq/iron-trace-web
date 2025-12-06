@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Trabajadores</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f6f9; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        input { padding: 8px; margin: 5px 0; width: 100%; box-sizing: border-box; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
+        th { background: #333; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/dashboard">⬅ Volver</a>
+        <h1>Gestión de Trabajadores</h1>
+        
+        <form action="/trabajadores/guardar" method="POST" style="background:#eee; padding:15px; border-radius:5px;">
+            <h3>Nuevo Trabajador</h3>
+            <input type="text" name="rut" placeholder="RUT (Ej: 11222333-4)" required>
+            <input type="text" name="nombre" placeholder="Nombre Completo" required>
+            <input type="text" name="correo" placeholder="Correo">
+            <input type="text" name="seccion" placeholder="Cargo / Sección">
+            <input type="text" name="faena" placeholder="Faena">
+            <button type="submit" style="background:#27ae60; color:white; border:none; padding:10px; width:100%; cursor:pointer;">GUARDAR</button>
+        </form>
+
+        <table>
+            <thead><tr><th>RUT</th><th>Nombre</th><th>Cargo</th><th>Faena</th></tr></thead>
+            <tbody>
+                {% for t in trabajadores %}
+                <tr>
+                    <td>{{ t.rut }}</td>
+                    <td>{{ t.nombre }}</td>
+                    <td>{{ t.seccion }}</td>
+                    <td>{{ t.faena }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4">No hay trabajadores.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
